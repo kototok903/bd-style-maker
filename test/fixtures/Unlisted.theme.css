@@ -1,0 +1,18 @@
+﻿/**
+ * @name Unlisted Theme
+ * @author Original Author
+ * @description A theme the editor has never seen.
+ * @version 1.2.3
+ * @custom Keep this tag
+ */
+@import url("https://example.com/unavailable.css") layer(base) screen;
+:root {
+  --accent: #a7b7ff;
+  --radius: 12px;
+  --text-normal: #dce0ee;
+}
+.theme-light { --accent: #333399; }
+[class*="embedFull_"] { color: var(--text-normal); border-radius: var(--radius); }
+@media (min-width: 200px) { :root { --accent: #bbaaff; } }
+/* Preserve this unusual rule and its inline data. */
+.unknown::before { content: "a;b"; background: url("data:image/svg+xml;utf8,<svg/>"); }
