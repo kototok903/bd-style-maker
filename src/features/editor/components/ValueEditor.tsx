@@ -1,8 +1,9 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ChoiceSelect } from "@/features/editor/components/ChoiceSelect";
+import { colorPickerValue } from "@/features/editor/lib/color-value";
 
 type Props = {
   value: string;
@@ -38,16 +39,7 @@ export function ValueEditor({
       setError(e instanceof Error ? e.message : "Could not update this value.");
     }
   }
-  const color = /^#[a-f\d]{6}$/i.test(draft)
-    ? draft
-    : /^#[a-f\d]{3}$/i.test(draft)
-      ? "#" +
-        draft
-          .slice(1)
-          .split("")
-          .map((s) => s + s)
-          .join("")
-      : null;
+  const color = useMemo(() => colorPickerValue(draft), [draft]);
   return (
     <Field data-invalid={!!error} data-disabled={disabled}>
       <FieldLabel htmlFor={id} className="sr-only">
@@ -57,12 +49,14 @@ export function ValueEditor({
         {color && !binding && (
           <input
             type="color"
-            value={color}
+            value={color.hex}
             aria-label={`${label} color picker`}
             disabled={disabled}
             onChange={(event) => {
-              setDraft(event.target.value);
-              commit(event.target.value);
+              const next =
+                event.target.value + (color.alpha === "ff" ? "" : color.alpha);
+              setDraft(next);
+              commit(next);
             }}
             className="color-input"
           />

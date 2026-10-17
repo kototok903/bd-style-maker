@@ -1069,3 +1069,16 @@ textarea:focus-visible {
     gap: 4px;
   }
 }
+
+.preview-scale {
+  margin-right: 12px;
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.preview-pane > [role="alert"] {
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  max-height: 150px;
+  overflow-y: auto;
+}

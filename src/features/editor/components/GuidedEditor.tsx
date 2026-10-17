@@ -77,14 +77,18 @@ export function GuidedEditor({
   const [error, setError] = useState("");
   const id = useId();
   const rule =
-    analysis.rules.find((r) => r.id === selectedRule) ?? analysis.rules[0];
+    analysis.rules.find((r) => r.id === selectedRule) ??
+    analysis.rules.find((r) => r.selector === ":root") ??
+    analysis.rules[0];
   const variables = [...new Set(analysis.variables.map((d) => d.property))];
-  const declarations =
-    rule?.declarations.filter((d) =>
-      section === "variables"
-        ? d.property.startsWith("--")
-        : guidedProperties.some((p) => p.property === d.property),
-    ) ?? [];
+  const allScopes = selectedRule === "all-variables" && section === "variables";
+  const declarations = allScopes
+    ? analysis.variables
+    : (rule?.declarations.filter((d) =>
+        section === "variables"
+          ? d.property.startsWith("--")
+          : guidedProperties.some((p) => p.property === d.property),
+      ) ?? []);
   const filtered = declarations.filter((d) =>
     `${d.property} ${d.value} ${d.comment}`
       .toLowerCase()
@@ -122,6 +126,7 @@ export function GuidedEditor({
     }
   }
   function originalValue(decl: ThemeDeclaration) {
+    const rule = analysis.rules.find((r) => r.id === decl.ruleId)!;
     const occurrences = analysis.rules.filter(
       (r) =>
         r.selector === rule?.selector &&
@@ -193,19 +198,28 @@ export function GuidedEditor({
           </div>
           <ChoiceSelect
             label="Editing scope"
-            value={rule?.id ?? "none"}
+            value={allScopes ? "all-variables" : (rule?.id ?? "none")}
             options={
               analysis.rules.length
-                ? analysis.rules.map((r) => ({
-                    label: `${r.selector} · L${r.line}`,
-                    value: r.id,
-                  }))
+                ? [
+                    ...(section === "variables"
+                      ? [{ label: "All scopes", value: "all-variables" }]
+                      : []),
+                    ...analysis.rules.map((r) => ({
+                      label: `${r.selector} · L${r.line}`,
+                      value: r.id,
+                    })),
+                  ]
                 : [{ label: "No selectors yet", value: "none" }]
             }
             onChange={onSelectRule}
             disabled={disabled || !analysis.rules.length}
           />
-          {rule?.context.length ? (
+          {allScopes ? (
+            <p className="scope-context">
+              Variables from every rule. Each edit keeps its original scope.
+            </p>
+          ) : rule?.context.length ? (
             <p className="scope-context">Inside {rule.context.join(" → ")}</p>
           ) : (
             <p className="scope-context">
@@ -309,6 +323,11 @@ export function GuidedEditor({
               />
               <div className="setting-caption">
                 <code>{decl.property}</code>
+                {allScopes && (
+                  <span>
+                    {analysis.rules.find((r) => r.id === decl.ruleId)?.selector}
+                  </span>
+                )}
                 {decl.important && <Badge variant="outline">!important</Badge>}
               </div>
               {decl.comment && (

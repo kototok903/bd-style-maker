@@ -104,7 +104,7 @@ export function AppShell() {
   const [dialog, setDialog] = useState<
     "metadata" | "imports" | "export" | "paste" | "changes" | null
   >(null);
-  const [external, setExternal] = useState(false);
+  const [external, setExternal] = useState(true);
   const [base, setBase] = useState("");
   const [compare, setCompare] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -150,7 +150,7 @@ export function AppShell() {
     setJump(null);
     setLastValid(emptyAnalysis);
     setBase("");
-    setExternal(false);
+    setExternal(true);
     setCompare(false);
     setCollapsed(false);
     setError("");
@@ -241,10 +241,7 @@ export function AppShell() {
     );
   }
   const ruleId =
-    analysis.rules.find((r) => r.id === selectedRule)?.id ??
-    analysis.rules.find((r) => r.selector === ":root")?.id ??
-    analysis.rules[0]?.id ??
-    "";
+    analysis.rules.find((r) => r.id === selectedRule)?.id ?? "all-variables";
 
   return (
     <TooltipProvider>
@@ -524,6 +521,7 @@ export function AppShell() {
                     analysis={previewAnalysis}
                     stale={!!analysis.diagnostic && !compare}
                     external={external}
+                    onEnableResources={() => setExternal(true)}
                     original={
                       compare ? previewCss(project.original, base) : null
                     }

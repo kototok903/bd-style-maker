@@ -23,7 +23,7 @@ bun run preview  # serve the production build locally
 
 The left pane has two modes sharing one source document and undo history:
 
-- **Guided editor:** create, edit, and remove CSS variables in individual rules. Add selectors, then edit a limited set of properties: text/background/border color, corner radius, font size, padding, gap, and opacity. Use a direct value or bind a property to a CSS variable. Literal hex colors get a native color picker; all values retain a CSS text field for units, alpha colors, expressions, and fallbacks. Text fields commit on Enter or blur; Escape restores the field value.
+- **Guided editor:** create, edit, and remove CSS variables across all scopes or in an individual rule. Each declaration keeps its original scope, including `body`, dark/light rules, and conditional blocks. Add selectors, then edit a limited set of properties: text/background/border color, corner radius, font size, padding, gap, and opacity. Use a direct value or bind a property to a CSS variable. Literal CSS colors, including `oklch()`, get a native color picker; all values retain a CSS text field for units, alpha colors, expressions, and fallbacks. Text fields commit on Enter or blur; Escape restores the field value.
 - **CSS editor:** unrestricted source editing with CodeMirror, CSS highlighting, line numbers, folding, search, syntax diagnostics, and source navigation from guided settings. Unknown rules remain in the source even when the guided mode doesn't expose them.
 
 Additional functionality:
@@ -32,8 +32,8 @@ Additional functionality:
 - Preserve original source on export, including BOM/newlines, comments, unknown metadata, imports, and declaration order. Guided edits patch the selected declaration rather than rebuild the file. Duplicate declarations and conditional scopes remain separate.
 - Leading metadata editor, undo/redo, undoable reset, original/current preview comparison, and a source diff.
 - IndexedDB draft autosave/recovery. Opening another theme with unexported changes offers download, discard, or cancel. Browser draft storage is separate from exporting a theme file.
-- Sandboxed, bundled Discord-like preview with dark/light appearance, chat/settings scenes, element selection, and a count of selectors matching the mounted fixture. Imported theme CSS cannot access or style the editor document.
-- Remote-resource toggle, optional HTTPS source URL for resolving relative preview paths, and bounded read-only inspection of direct/nested imports. Original import URLs and conditions stay unchanged in export.
+- Sandboxed, bundled Discord DOM/base CSS snapshot with dark/light appearance, element selection, fit/100% zoom, and a count of local selectors matching the mounted document. Imported theme CSS cannot access or style the editor document.
+- Automatic loading of direct/nested theme CSS imports with caching, URL rebasing, preserved layer/supports/media conditions, and visible failure reporting. A resource toggle can pause requests. An optional HTTPS source URL resolves relative paths; import inspection remains read-only. Original import URLs and conditions stay unchanged in export.
 - Download a `.theme.css` or copy the current CSS. Incomplete metadata or malformed CSS does not prevent downloading source to keep your work.
 - Resizable desktop panes and a stacked mobile workspace.
 
@@ -41,9 +41,9 @@ Shortcuts: `Cmd/Ctrl O` open, `Cmd/Ctrl S` export, `Cmd/Ctrl Z` undo, `Cmd/Ctrl 
 
 ## Preview and dependency limits
 
-The preview is an original, approximate fixture, **not the live Discord client**. It supports common background/text variables, `--brand-500`, and the bundled starter's selector patterns. It does not replicate Discord's exact class hashes, full DOM, plugins, or desktop transparency. Unmatched selectors can target an unmounted scene or a different Discord version; they are not automatically invalid. Always verify the exported theme in BetterDiscord. See [compatibility notes](docs/compatibility.md).
+The preview uses captured Discord markup and base CSS from [Gibbu/ThemePreview](https://github.com/Gibbu/ThemePreview), bundled at a pinned revision. It includes layout-class aliases for newer themes; it is still a captured client state, with version-dependent selectors and no live Discord behavior, plugin UI, or desktop transparency. See [provenance](src/features/preview/fixture/NOTICE.md) and [compatibility/validation notes](docs/compatibility.md).
 
-External resources start paused. Enabling them permits HTTPS CSS, fonts, and images in the preview and makes requests to their hosts. Reading remote source is a separate action and depends on CORS. Inspecting dependencies never writes to them or bundles them into the output. Remote-source variables are viewable as read-only CSS, not automatically editable settings in v1.
+Theme resources load automatically, including nested HTTPS CSS imports, fonts, and images. These make requests to their respective hosts. Failed imports show an explicit error rather than silently presenting the default appearance as a finished theme. When CORS blocks source reading, a native browser-import fallback can still render the theme and reports stylesheet load/error events. Source inspection remains unavailable for those resources. Pause requests in Imports. Successful CSS sources are cached for the session, so guided changes do not fetch entire dependencies again. Imported variables are read-only unless you add a local override; dependencies are never bundled into exported files.
 
 A dropped file has no reliable original filesystem URL. Supply its original HTTPS URL for relative paths, or change paths in CSS. Local companion-file resolution, dependency editing/bundling, true offline asset export, full cascade inspection, and automatic installation into BetterDiscord are not included in v1.
 
