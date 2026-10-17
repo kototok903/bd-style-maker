@@ -7,7 +7,15 @@ import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(["dist", "docs", "node_modules"]),
+  globalIgnores(["dist", "docs", "node_modules", ".agents", ".claude"]),
+  {
+    files: [
+      "scripts/capture-discord.js",
+      "src/features/preview/fixture/bootstrap.js",
+    ],
+    extends: [js.configs.recommended],
+    languageOptions: { globals: globals.browser },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [

@@ -2,9 +2,9 @@
 
 ## Rendering
 
-The preview uses real Discord markup and base CSS captured by [Gibbu/ThemePreview](https://github.com/Gibbu/ThemePreview), pinned at revision `607db5e3e620d4e0851d2d3b443a07a7322ca47a`. The HTML and base CSS are bundled locally; no third-party preview page or upstream JavaScript runs in the app. See [snapshot provenance and regeneration](../src/features/preview/fixture/NOTICE.md).
+The preview uses sanitized markup and the complete ordered CSS set captured directly from the current Discord web client on 2026-10-17. The former third-party snapshot and `_c48ade` class aliases have been removed. See [provenance and regeneration](../src/features/preview/fixture/NOTICE.md).
 
-The previous synthetic fixture could not match real theme selectors. The new document retains exact captured class names, DOM nesting, default tokens, sample messages, embeds, member list, and controls. The captured layout module's `_c48ade` classes also receive `__5e434` aliases, supporting the newer selectors used by system24/midnight while preserving the captured base CSS.
+The capture retains the client's current `__5e434` grid/subgrid layout, inline layout variables, density/font/platform classes, structural data attributes, SVG mask relationships, chat/header/sidebar/user-panel/composer nesting, and member-list container. All 730 public CSS modules are bundled in the same order as the inspected client. The 21 public CSS mask assets and all 47 base font files are embedded as data URLs so Discord’s same-origin asset policy cannot hide icons or force fallback fonts in the isolated frame. Other asset URLs are rebased to their public URLs. This increases the bundled snapshot size in exchange for faithful, portable base rendering. Private text, IDs, images, links, and drafts are replaced before saving. A member-list toggle hides the entire captured container, matching the space released by the live client. Input and form actions are intercepted locally.
 
 A virtual desktop canvas fits into the available pane, preventing Discord's sidebars from squeezing chat at narrow editor widths. Switch to 100% to scroll the full canvas.
 
@@ -26,11 +26,11 @@ Literal colors, including `oklch()`, have a color picker. Merely opening the pic
 
 ## Isolation
 
-The iframe uses `sandbox="allow-scripts"` without same-origin privileges. The captured document is sanitized to remove upstream scripts, resource links, metadata, and event handlers. Its CSP permits only the app's nonced bootstrap script. Theme text is assigned through a style node's `textContent`, never interpolated as HTML. The bootstrap checks the parent window and per-instance token, then transfers a dedicated MessageChannel. Subsequent updates validate payload types, sizes, and revision IDs. Theme CSS cannot style or read the editor document. The remote-resource toggle controls HTTPS styles, fonts, and images inside the frame; script execution from themes remains blocked.
+The iframe uses `sandbox="allow-scripts"` without same-origin privileges. The captured document is sanitized before saving to remove account content, scripts, resource links, metadata, event handlers, and private asset references. Its CSP permits only the app's nonced bootstrap script. Theme text is assigned through a style node's `textContent`, never interpolated as HTML. The bootstrap checks the parent window and per-instance token, then transfers a dedicated MessageChannel. Subsequent updates validate payload types, sizes, and revision IDs. Theme CSS cannot style or read the editor document. The remote-resource toggle controls HTTPS styles, fonts, and images inside the frame; script execution from themes remains blocked.
 
 ## Automated checks
 
-The Vitest corpus covers source preservation (BOM/CRLF, comments, unknown metadata, declaration order, duplicate variables, conditional rules), targeted edits, malformed source, history, dependency inspection, URL rebasing, recursive import compilation/cache/conditions/failures/cycles, the actual MaterialDiscord/system24 configuration files, and the sanitized snapshot's expected DOM structure and aliases.
+The Vitest corpus covers source preservation (BOM/CRLF, comments, unknown metadata, declaration order, duplicate variables, conditional rules), targeted edits, malformed source, history, dependency inspection, URL rebasing, recursive import compilation/cache/conditions/failures/cycles, the actual MaterialDiscord/system24 configuration files, and the sanitized snapshot's current DOM structure, structural attributes, SVG references, and removal of private identifiers/resources.
 
 Original public theme configuration files are preserved in `test/fixtures/themes` for regression checks. Formatting tools exclude source-preservation fixtures and the generated snapshot.
 
@@ -46,3 +46,15 @@ Validated against the user's installed theme configuration files, without modify
 Earlier source workflow checks also verified unchanged BOM/CRLF export, custom variables and literal/variable selector bindings, syntax diagnostics and last-valid preview, IndexedDB recovery, parent/frame isolation, and mobile workspace sizing. These establish editing and preview behavior for the checked scenes; they do not certify every third-party theme or client state.
 
 Additional production checks confirmed that system24 loads with no resource alert. The installed Tokyo Night configuration references removed `dyzean.github.io/Tokyo-Night` paths (the main CSS returns HTTP 404); the app reports a failed browser import instead of claiming a complete render. NieR's original host redirects without readable CORS headers: the browser fallback successfully loaded its beige palette and Rodin font while marking source inspection unavailable. This older theme still has selectors for client states/versions absent from the snapshot.
+
+## Live-client comparison after replacing the old snapshot
+
+Inspected the user's signed-in Discord web tab, member list, pinned-message panel, and Appearance settings without sending messages or changing account settings. Returned to the original chat view and removed all temporary reference styles.
+
+At the same 565 × 857 CSS-pixel viewport, the sanitized unthemed fixture exactly matched all 10 measured regions: application grid, sidebar, server rail, channel list, user panel, chat container, chat content, header, composer, and member list. Measurements included bounding rectangles, display/position, grid tracks, padding/margin/gap, font family/size/line height, background, and radius.
+
+Temporarily applied the same compiled MaterialDiscord and system24 CSS to both the live client and fixture, with the member list closed. All nine measured regions matched for each theme. The temporary styles were removed after each comparison. Reference values and results are recorded in [preview-validation.json](preview-validation.json). These checks target structure and computed styles; sample message lengths and image content intentionally differ from the user's conversations.
+
+The app's opaque-origin frame was then checked separately for theme loading, guided edits, member-list toggling, and light/dark appearance. The preview represents the inspected web-client build and captured chat state; future Discord releases, desktop window chrome, voice/video surfaces, settings dialogs, and plugin components require separate updates or scenes.
+
+The final desktop capture was checked at 1280 × 800 with the full composer controls and member list open. Both themes matched all 10 measured regions after allowing the live client to settle; MaterialDiscord’s left-position transition was disabled only for steady-state reference measurement. The preview emulates the client’s measured user-panel height with ResizeObserver and lets the empty Slate composer size naturally instead of keeping its captured inline height. These behaviors fixed the remaining spacing and composer-height discrepancies. CSS transition timing can differ while a background tab is throttled; comparison records use settled states.
