@@ -246,7 +246,7 @@ export function AppShell() {
   return (
     <TooltipProvider>
       <div
-        className={cn("app-shell", dragging && "is-dragging")}
+        className="flex h-dvh flex-col overflow-hidden bg-background"
         onDragEnter={(e) => {
           if (e.dataTransfer.types.includes("Files")) {
             e.preventDefault();
@@ -287,26 +287,33 @@ export function AppShell() {
           }}
           disabled={!hydrated}
         />
-        <header className="app-header">
-          <div className="app-identity">
-            <div className="app-logo">
-              <BracesIcon />
+        <header className="flex min-h-[78px] shrink-0 items-center gap-[25px] border-b px-7 py-[18px] max-[1050px]:min-h-[66px] max-[1050px]:px-5 max-[1050px]:py-[15px] max-[760px]:gap-3 max-[760px]:px-4 max-[760px]:py-[13px] max-[400px]:gap-2 max-[400px]:px-3 min-[1600px]:px-9">
+          <div className="flex shrink-0 items-center gap-[11px] max-[400px]:gap-2">
+            <div className="grid size-[34px] place-items-center rounded-[9px] bg-primary text-primary-foreground max-[400px]:size-7">
+              <BracesIcon className="size-[22px] max-[400px]:size-5" />
             </div>
             <div>
-              <strong>BD Style Maker</strong>
-              <span className="app-tagline">A little more like you.</span>
+              <strong className="block text-[14px] font-semibold tracking-[-0.35px] max-[400px]:text-[12px]">
+                BD Style Maker
+              </strong>
+              <span className="mt-px block text-[10px] text-subtle-foreground max-[1050px]:hidden">
+                A little more like you.
+              </span>
             </div>
           </div>
           {project && (
-            <div className="open-file">
-              <FileCode2Icon />
-              <span>{project.fileName}</span>
+            <div className="flex min-w-0 items-center gap-[9px] border-l pl-6 text-[12px] text-muted-foreground max-[1050px]:pl-[18px] max-[760px]:hidden">
+              <FileCode2Icon className="size-[15px] shrink-0" />
+              <span className="truncate">{project.fileName}</span>
               {dirty && (
-                <span className="unsaved-dot" title="Changes not exported" />
+                <span
+                  className="size-[5px] shrink-0 rounded-full bg-ring"
+                  title="Changes not exported"
+                />
               )}
             </div>
           )}
-          <div className="header-actions">
+          <div className="ml-auto flex items-center gap-[7px] max-[400px]:gap-1">
             {project && (
               <>
                 {tool("New theme", <PlusIcon />, () =>
@@ -318,7 +325,7 @@ export function AppShell() {
                   onClick={() => input.current?.click()}
                 >
                   <FolderOpenIcon data-icon="inline-start" />
-                  <span className="optional-label">Open theme</span>
+                  <span className="max-[760px]:hidden">Open theme</span>
                 </Button>
                 <Button size="sm" onClick={requestExport}>
                   <DownloadIcon data-icon="inline-start" />
@@ -330,7 +337,10 @@ export function AppShell() {
           </div>
         </header>
         {error && (
-          <Alert variant="destructive" className="app-notice">
+          <Alert
+            variant="destructive"
+            className="shrink-0 rounded-none border-x-0 border-t-0"
+          >
             <AlertDescription className="flex items-center justify-between gap-3">
               {error}
               <Button
@@ -345,7 +355,7 @@ export function AppShell() {
           </Alert>
         )}
         {recovered && (
-          <Alert className="app-notice">
+          <Alert className="shrink-0 rounded-none border-x-0 border-t-0">
             <HistoryIcon />
             <AlertDescription className="flex items-center justify-between gap-3">
               Your last workspace was recovered from this device.
@@ -370,8 +380,8 @@ export function AppShell() {
           />
         ) : (
           <>
-            <div className="workspace-commandbar">
-              <div className="document-tools">
+            <div className="flex shrink-0 items-center justify-between gap-2.5 border-b px-[22px] py-2.5 max-[760px]:px-3 max-[760px]:py-2">
+              <div className="flex items-center gap-[3px]">
                 {tool(
                   "Undo (⌘/Ctrl Z)",
                   <Undo2Icon />,
@@ -384,14 +394,14 @@ export function AppShell() {
                   redo,
                   !state.future.length,
                 )}
-                <span className="toolbar-divider" />
+                <span className="mx-2.5 h-4 w-px bg-border max-[760px]:mx-[5px]" />
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setDialog("metadata")}
                 >
                   <FileTextIcon data-icon="inline-start" />
-                  <span className="optional-label">Theme info</span>
+                  <span className="max-[760px]:hidden">Theme info</span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -399,7 +409,7 @@ export function AppShell() {
                   onClick={() => setDialog("imports")}
                 >
                   <LinkIcon data-icon="inline-start" />
-                  <span className="optional-label">Imports</span>
+                  <span className="max-[760px]:hidden">Imports</span>
                   {analysis.imports.length > 0 && (
                     <Badge variant="secondary">{analysis.imports.length}</Badge>
                   )}
@@ -410,7 +420,7 @@ export function AppShell() {
                   onClick={() => setDialog("changes")}
                 >
                   <FilePenLineIcon data-icon="inline-start" />
-                  <span className="optional-label">Changes</span>
+                  <span className="max-[760px]:hidden">Changes</span>
                 </Button>
               </div>
               <div className="flex items-center gap-2">
@@ -421,7 +431,7 @@ export function AppShell() {
                   onClick={() => setCompare(!compare)}
                 >
                   <GitCompareArrowsIcon data-icon="inline-start" />
-                  <span className="optional-label">
+                  <span className="max-[760px]:hidden">
                     {compare ? "Viewing original" : "Compare original"}
                   </span>
                 </Button>
@@ -432,26 +442,32 @@ export function AppShell() {
                 )}
               </div>
             </div>
-            <div
-              className={cn("workspace-body", collapsed && "editor-collapsed")}
-            >
+            <div className="min-h-0 flex-1 max-[760px]:overflow-auto">
+              {/* Panel className styles its inner scroll container, so the group targets outer panels. */}
               <ResizablePanelGroup
                 orientation="horizontal"
-                className="workspace-panels"
+                className={cn(
+                  "min-h-0 max-[760px]:h-auto! max-[760px]:flex-col! max-[760px]:overflow-visible! max-[760px]:[&>[data-slot=resizable-handle]]:hidden!",
+                  "max-[760px]:[&>[data-slot=resizable-panel]]:w-full! max-[760px]:[&>[data-slot=resizable-panel]]:max-w-none! max-[760px]:[&>[data-slot=resizable-panel]]:min-w-0!",
+                  "max-[760px]:[&>[data-slot=resizable-panel]:first-child]:min-h-[510px]! max-[760px]:[&>[data-slot=resizable-panel]:first-child]:flex-[0_0_510px]!",
+                  "max-[760px]:[&>[data-slot=resizable-panel]:last-child]:min-h-[620px] max-[760px]:[&>[data-slot=resizable-panel]:last-child]:flex-[0_0_620px]!",
+                  collapsed &&
+                    "[&>[data-slot=resizable-handle]]:hidden! [&>[data-slot=resizable-panel]:first-child]:hidden! max-[760px]:[&>[data-slot=resizable-panel]:last-child]:basis-[720px]!",
+                )}
               >
                 <ResizablePanel
                   id="editor"
                   defaultSize="31%"
                   minSize="310px"
                   maxSize="65%"
-                  className="editor-panel"
+                  className="min-w-0"
                 >
                   <Tabs
                     value={mode}
                     onValueChange={setMode}
-                    className="editor-tabs"
+                    className="h-full gap-0"
                   >
-                    <div className="editor-mode-bar">
+                    <div className="px-[22px] pt-[18px] pb-1.5 max-[1050px]:px-[17px] max-[1050px]:pt-4 max-[1050px]:pb-[5px] max-[760px]:px-[22px] min-[1600px]:px-7 min-[1600px]:pt-[22px]">
                       <TabsList className="w-full">
                         <TabsTrigger value="guided">
                           <SlidersHorizontalIcon />
@@ -463,7 +479,10 @@ export function AppShell() {
                         </TabsTrigger>
                       </TabsList>
                     </div>
-                    <TabsContent value="guided" className="min-h-0">
+                    <TabsContent
+                      value="guided"
+                      className="min-h-0 overflow-hidden"
+                    >
                       <ScrollArea className="h-full">
                         <GuidedEditor
                           key={project.id}
@@ -476,17 +495,20 @@ export function AppShell() {
                         />
                       </ScrollArea>
                     </TabsContent>
-                    <TabsContent value="css" className="source-tab">
-                      <div className="source-file-bar">
-                        <span>
-                          <span className="source-file-dot" />
+                    <TabsContent
+                      value="css"
+                      className="flex h-full min-h-0 flex-col overflow-hidden pt-[15px]"
+                    >
+                      <div className="flex items-center justify-between gap-2.5 px-[21px] pb-3 font-mono text-[10px] text-muted-foreground">
+                        <span className="truncate">
+                          <span className="mr-[7px] inline-block size-[5px] rounded-full bg-ring" />
                           {project.fileName}
                         </span>
                         <span>CSS</span>
                       </div>
                       <Suspense
                         fallback={
-                          <div className="source-editor p-5 text-sm text-muted-foreground">
+                          <div className="min-h-0 flex-1 overflow-hidden border-y p-5 text-sm text-muted-foreground">
                             Opening CSS editor…
                           </div>
                         }
@@ -502,20 +524,25 @@ export function AppShell() {
                         />
                       </Suspense>
                       {analysis.diagnostic && (
-                        <div className="source-diagnostic" role="alert">
+                        <div
+                          className="bg-editor-surface px-[18px] py-2.5 text-[11px] leading-[1.7] text-destructive"
+                          role="alert"
+                        >
                           Line {analysis.diagnostic.line}:
                           {analysis.diagnostic.column} ·{" "}
                           {analysis.diagnostic.message}
                         </div>
                       )}
-                      <div className="source-bottom">
+                      <div className="flex justify-between gap-2 px-5 py-2.5 text-[9px] text-subtle-foreground">
                         Full source access{" "}
-                        <span>Find ⌘/Ctrl F · Indent Tab</span>
+                        <span className="max-[760px]:hidden">
+                          Find ⌘/Ctrl F · Indent Tab
+                        </span>
                       </div>
                     </TabsContent>
                   </Tabs>
                 </ResizablePanel>
-                <ResizableHandle className="editor-resize" />
+                <ResizableHandle />
                 <ResizablePanel id="preview" minSize="35%">
                   <ThemePreview
                     analysis={previewAnalysis}
@@ -532,26 +559,34 @@ export function AppShell() {
             </div>
           </>
         )}
-        <footer className="app-footer">
-          <span className="storage-state">
-            <CheckIcon />
+        <footer className="flex min-h-[38px] shrink-0 items-center gap-5 border-t px-[25px] py-2.5 text-[10px] text-subtle-foreground max-[760px]:gap-3 max-[760px]:px-4 max-[760px]:text-[9px]">
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
+            <CheckIcon className="size-3 text-status" />
             {hydrated ? storage : "Loading local workspace…"}
           </span>
-          <span className="footer-message" role="status" aria-live="polite">
+          <span
+            className="truncate max-[760px]:hidden"
+            role="status"
+            aria-live="polite"
+          >
             {message ||
               (project
                 ? `${analysis.variables.length} variables · ${analysis.rules.length} rules · UTF-8`
                 : "Made for your own CSS.")}
           </span>
-          <span className="footer-shortcut">
+          <span className="ml-auto whitespace-nowrap max-[1050px]:hidden">
             {project ? "⌘/Ctrl S to export" : "Files stay on your device"}
           </span>
         </footer>
         {dragging && (
-          <div className="drop-overlay">
-            <FolderOpenIcon />
-            <strong>Drop to open your theme</strong>
-            <span>.theme.css or .css · up to 2 MB</span>
+          <div className="pointer-events-none fixed inset-3 z-100 flex flex-col items-center justify-center gap-[15px] rounded-[14px] border-2 border-dashed border-ring bg-background/95">
+            <FolderOpenIcon className="size-10 text-ring" />
+            <strong className="text-[23px] font-medium">
+              Drop to open your theme
+            </strong>
+            <span className="text-muted-foreground">
+              .theme.css or .css · up to 2 MB
+            </span>
           </div>
         )}
         <PasteDialog

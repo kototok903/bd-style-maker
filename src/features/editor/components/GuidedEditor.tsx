@@ -146,11 +146,14 @@ export function GuidedEditor({
     )[duplicate]?.value;
   }
   return (
-    <div className="guided-editor">
-      <div className="section-intro">
-        <div className="eyebrow">Your stylesheet, made approachable</div>
-        <h1>Make it your own.</h1>
-        <p>Small adjustments. A whole different feeling.</p>
+    <div className="flex flex-col gap-4 px-[26px] pt-6 pb-[30px] max-[1050px]:px-5 max-[1050px]:py-[22px] max-[760px]:px-[22px] min-[1600px]:px-8 min-[1600px]:py-[30px]">
+      <div>
+        <h1 className="mb-2 text-[25px] leading-[1.25] font-semibold tracking-[-0.9px]">
+          Make it your own.
+        </h1>
+        <p className="text-[12px] leading-[1.7] text-muted-foreground">
+          Small adjustments. A whole different feeling.
+        </p>
       </div>
       {disabled && (
         <Alert variant="destructive">
@@ -184,7 +187,7 @@ export function GuidedEditor({
       </ToggleGroup>
       <FieldGroup>
         <Field>
-          <div className="field-heading">
+          <div className="mb-[5px] flex items-center justify-between gap-2.5">
             <FieldLabel>Editing scope</FieldLabel>
             <Button
               variant="ghost"
@@ -216,21 +219,23 @@ export function GuidedEditor({
             disabled={disabled || !analysis.rules.length}
           />
           {allScopes ? (
-            <p className="scope-context">
+            <p className="text-[10px] leading-[1.6] wrap-anywhere text-subtle-foreground">
               Variables from every rule. Each edit keeps its original scope.
             </p>
           ) : rule?.context.length ? (
-            <p className="scope-context">Inside {rule.context.join(" → ")}</p>
+            <p className="text-[10px] leading-[1.6] wrap-anywhere text-subtle-foreground">
+              Inside {rule.context.join(" → ")}
+            </p>
           ) : (
-            <p className="scope-context">
+            <p className="text-[10px] leading-[1.6] wrap-anywhere text-subtle-foreground">
               Only declarations in this rule will change.
             </p>
           )}
         </Field>
       </FieldGroup>
       <Separator />
-      <div className="list-heading">
-        <span className="eyebrow">
+      <div className="-mt-1.5 -mb-[9px] flex items-center justify-between gap-2">
+        <span className="text-[9px] font-[550] tracking-[1.3px] text-subtle-foreground uppercase">
           {section === "variables" ? "CSS variables" : "Selected properties"}
         </span>
         <Button
@@ -246,8 +251,8 @@ export function GuidedEditor({
         </Button>
       </div>
       {declarations.length > 10 && (
-        <div className="search-field">
-          <SearchIcon />
+        <div className="flex items-center gap-2">
+          <SearchIcon className="size-3.5 shrink-0 text-subtle-foreground" />
           <Input
             aria-label="Search settings"
             placeholder="Find a setting…"
@@ -260,9 +265,9 @@ export function GuidedEditor({
         {filtered.map((decl) => {
           const reset = originalValue(decl);
           return (
-            <div className="declaration-setting" key={decl.id}>
-              <div className="field-heading">
-                <span className="setting-label">
+            <div className="min-w-0" key={decl.id}>
+              <div className="mb-[5px] flex items-center justify-between gap-2.5">
+                <span className="text-[12px] font-medium">
                   {guidedProperties.find((p) => p.property === decl.property)
                     ?.label ?? friendlyName(decl.property)}
                 </span>
@@ -321,8 +326,10 @@ export function GuidedEditor({
                   )
                 }
               />
-              <div className="setting-caption">
-                <code>{decl.property}</code>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-subtle-foreground">
+                <code className="font-mono text-[10px] wrap-anywhere">
+                  {decl.property}
+                </code>
                 {allScopes && (
                   <span>
                     {analysis.rules.find((r) => r.id === decl.ruleId)?.selector}
@@ -331,7 +338,9 @@ export function GuidedEditor({
                 {decl.important && <Badge variant="outline">!important</Badge>}
               </div>
               {decl.comment && (
-                <p className="setting-comment">{decl.comment}</p>
+                <p className="mt-[5px] text-[10px] leading-[1.65] text-muted-foreground">
+                  {decl.comment}
+                </p>
               )}
             </div>
           );
@@ -381,13 +390,18 @@ export function GuidedEditor({
           )}
         </Empty>
       )}
-      <div className="guided-footer">
-        <CodeIcon />
-        <p>
+      <div className="mt-[5px] flex items-center gap-2.5 border-t pt-5 text-muted-foreground">
+        <CodeIcon className="size-4" />
+        <p className="text-[11px] leading-[1.9]">
           Need more freedom?
           <br />
-          <button type="button" onClick={() => onJump(rule?.from ?? 0)}>
-            Everything is editable in CSS <span>↗</span>
+          <button
+            type="button"
+            className="border-0 bg-transparent p-0 text-[11px] text-foreground"
+            onClick={() => onJump(rule?.from ?? 0)}
+          >
+            Everything is editable in CSS{" "}
+            <span className="ml-[3px] text-muted-foreground">↗</span>
           </button>
         </p>
       </div>

@@ -140,10 +140,18 @@ export function ExportDialog({
             </AlertDescription>
           </Alert>
         )}
-        <div className="export-summary">
-          <span>Original CSS, comments, and metadata</span>
-          <span>{analysis.imports.length} remote imports retained</span>
-          <span>No editor-specific format</span>
+        <div className="flex flex-col gap-[9px] rounded-[7px] border bg-editor-surface p-[15px] text-[12px]">
+          <span className="flex items-center gap-2">
+            <span className="text-status">✓</span>Original CSS, comments, and
+            metadata
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="text-status">✓</span>
+            {analysis.imports.length} remote imports retained
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="text-status">✓</span>No editor-specific format
+          </span>
         </div>
         <p className="text-xs leading-relaxed text-muted-foreground">
           The preview is approximate. Check the result in BetterDiscord after
@@ -262,7 +270,7 @@ export function ChangesDialog({
             {project.fileName} · Reset is undoable.
           </DialogDescription>
         </DialogHeader>
-        <div className="diff-view">
+        <div className="max-h-[55dvh] overflow-auto rounded-[7px] border bg-editor-surface">
           {project.original === project.text ? (
             <p className="p-6 text-sm text-muted-foreground">
               No changes yet. Your original source is intact.
@@ -272,12 +280,14 @@ export function ChangesDialog({
               <pre
                 key={index}
                 className={cn(
-                  "diff-line",
-                  change.added && "diff-added",
-                  change.removed && "diff-removed",
+                  "flex gap-3.5 px-[15px] font-mono text-[11px] leading-[1.8] wrap-anywhere whitespace-pre-wrap",
+                  change.added && "bg-diff-add text-diff-add-foreground",
+                  change.removed &&
+                    "bg-diff-remove text-diff-remove-foreground",
                 )}
               >
                 <span
+                  className="w-2 shrink-0 select-none"
                   aria-label={
                     change.added
                       ? "Added"

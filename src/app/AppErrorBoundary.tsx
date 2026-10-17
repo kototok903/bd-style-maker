@@ -15,12 +15,15 @@ export class AppErrorBoundary extends Component<
   render() {
     if (this.state.failed)
       return (
-        <main className="fatal-error">
-          <h1>The workspace hit a problem.</h1>
-          <p>
+        <main className="m-auto max-w-[600px] px-[30px] py-[60px]">
+          <h1 className="mb-[15px] text-2xl">The workspace hit a problem.</h1>
+          <p className="mb-5 text-muted-foreground">
             Your last saved draft stays on this device. Reload to recover it.
           </p>
-          <button onClick={() => window.location.reload()}>
+          <button
+            className="rounded-[7px] bg-primary px-[15px] py-2.5 text-primary-foreground"
+            onClick={() => window.location.reload()}
+          >
             Reload workspace
           </button>
         </main>

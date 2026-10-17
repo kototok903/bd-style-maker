@@ -204,5 +204,7 @@ export function SourceEditor({
     });
     view.focus();
   }, [jump]);
-  return <div className="source-editor" ref={container} />;
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden border-y" ref={container} />
+  );
 }

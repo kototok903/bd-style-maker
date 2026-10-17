@@ -143,11 +143,15 @@ export function DependenciesDialog({
                 ? results.map((item, index) => (
                     <div
                       key={index}
-                      className="dependency-row"
+                      className="flex flex-col items-start gap-[5px] rounded-[7px] border p-3"
                       style={{ marginLeft: Math.min(item.depth * 12, 48) }}
                     >
-                      <code>{item.url}</code>
-                      <p>{item.status}</p>
+                      <code className="max-w-full font-mono text-[11px] wrap-anywhere">
+                        {item.url}
+                      </code>
+                      <p className="text-[11px] text-muted-foreground">
+                        {item.status}
+                      </p>
                       {item.source !== undefined && (
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary">
@@ -166,9 +170,14 @@ export function DependenciesDialog({
                     </div>
                   ))
                 : imports.map((item) => (
-                    <div className="dependency-row" key={item.id}>
-                      <code>{item.url}</code>
-                      <p>
+                    <div
+                      className="flex flex-col items-start gap-[5px] rounded-[7px] border p-3"
+                      key={item.id}
+                    >
+                      <code className="max-w-full font-mono text-[11px] wrap-anywhere">
+                        {item.url}
+                      </code>
+                      <p className="text-[11px] text-muted-foreground">
                         {item.conditions || "All media"} · Line {item.line}
                       </p>
                       <Badge variant="outline">
@@ -201,7 +210,9 @@ export function DependenciesDialog({
               {viewing?.url} · read-only
             </DialogDescription>
           </DialogHeader>
-          <pre className="dependency-source">{viewing?.source}</pre>
+          <pre className="max-h-[55dvh] overflow-auto rounded-[7px] border bg-editor-surface p-[15px] text-[11px] leading-[1.8] wrap-anywhere whitespace-pre-wrap">
+            {viewing?.source}
+          </pre>
         </DialogContent>
       </Dialog>
     </>

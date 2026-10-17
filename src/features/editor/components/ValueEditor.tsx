@@ -45,7 +45,7 @@ export function ValueEditor({
       <FieldLabel htmlFor={id} className="sr-only">
         {label}
       </FieldLabel>
-      <div className="value-controls">
+      <div className="flex items-center gap-2">
         {color && !binding && (
           <input
             type="color"
@@ -58,7 +58,7 @@ export function ValueEditor({
               setDraft(next);
               commit(next);
             }}
-            className="color-input"
+            className="size-[30px] shrink-0 cursor-pointer rounded-[7px] border border-input bg-editor-surface p-[3px] [&::-webkit-color-swatch]:rounded-[3px] [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0"
           />
         )}
         <Input
@@ -86,7 +86,7 @@ export function ValueEditor({
         />
       </div>
       {allowBinding && (
-        <div className="binding-controls">
+        <div className="flex min-w-0 items-center gap-1.5 [&>button]:min-w-0 [&>button]:flex-1">
           <ChoiceSelect
             label={`${label} value type`}
             value={binding ? "variable" : "literal"}

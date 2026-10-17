@@ -187,15 +187,15 @@ export function ThemePreview({
     loaded = compiled.resources.filter((r) => r.status === "loaded").length;
   return (
     <section
-      className="preview-pane"
+      className="flex h-full min-h-0 flex-col px-[27px] pt-[19px] pb-4 max-[1050px]:p-[18px] max-[760px]:border-t max-[760px]:px-4 max-[760px]:pb-[22px] min-[1600px]:px-[34px] min-[1600px]:pt-[23px] min-[1600px]:pb-5"
       aria-label="Live theme preview"
       data-preview-diagnostics={JSON.stringify(samples)}
       data-stylesheets-loaded={loaded}
       data-native-styles-status={compiled.native ? nativeStatus : undefined}
     >
-      <header className="preview-toolbar">
-        <div className="preview-heading">
-          <span className="live-indicator" />
+      <header className="mb-[18px] flex shrink-0 flex-wrap items-center justify-between gap-3 max-[760px]:gap-2.5">
+        <div className="flex items-center gap-[7px] text-[11px] text-muted-foreground">
+          <span className="size-[5px] rounded-full bg-status ring-[3px] ring-status/9" />
           <span>{loading ? "Loading theme styles…" : "Live preview"}</span>
           {original !== null && original !== undefined && (
             <Badge variant="secondary">Original</Badge>
@@ -229,6 +229,7 @@ export function ThemePreview({
       </header>
       {(fixtureError || error || failed.length > 0) && (
         <Alert
+          className="mb-3 max-h-[150px] shrink-0 overflow-y-auto"
           variant={
             fixtureError ||
             error ||
@@ -290,7 +291,7 @@ export function ThemePreview({
         </Alert>
       )}
       {paused.length > 0 && (
-        <Alert>
+        <Alert className="mb-3 max-h-[150px] shrink-0 overflow-y-auto">
           <AlertTitle>This theme needs its imported styles</AlertTitle>
           <AlertDescription>
             <span>
@@ -304,18 +305,17 @@ export function ThemePreview({
         </Alert>
       )}
       <div
-        className="preview-frame"
+        className="relative min-h-0 flex-1 overflow-hidden rounded-[11px] border bg-editor-surface shadow-[0_5px_30px_#00000010]"
         ref={canvas}
         style={{ overflow: fit ? "hidden" : "auto" }}
       >
         {document && (
           <iframe
+            className="absolute block size-full origin-top-left border-0"
             style={{
               width: Math.max(1280, size.width),
               height: Math.max(400, size.height / Math.max(scale, 0.1)),
               transform: `scale(${scale})`,
-              transformOrigin: "top left",
-              position: "absolute",
             }}
             ref={frame}
             srcDoc={document}
@@ -325,18 +325,18 @@ export function ThemePreview({
           />
         )}{" "}
         {(!ready || loading) && (
-          <div className="preview-loading">
+          <div className="absolute inset-0 grid place-items-center bg-card text-[12px] text-muted-foreground">
             {ready
               ? "Loading imported stylesheets…"
               : "Preparing Discord preview…"}
           </div>
         )}
       </div>
-      <footer className="preview-footer">
+      <footer className="flex flex-wrap items-center justify-between gap-2.5 pt-[13px] pb-2.5 text-[10px] text-subtle-foreground">
         <span>
           <button
             type="button"
-            className="preview-scale"
+            className="mr-3 text-foreground underline underline-offset-[3px]"
             onClick={() => setFit(!fit)}
             aria-label="Toggle preview zoom"
           >
@@ -354,12 +354,12 @@ export function ThemePreview({
             : `${matched} of ${analysis.rules.length} local selectors match`}
         </span>
       </footer>
-      <div className="preview-notes">
-        <span>
-          <UnplugIcon />
+      <div className="flex flex-wrap justify-between gap-2 text-[9px] text-subtle-foreground">
+        <span className="flex items-center gap-[5px]">
+          <UnplugIcon className="size-[11px]" />
           {external ? "Theme resources enabled" : "External resources paused"}
         </span>
-        <span>
+        <span className="flex items-center gap-[5px]">
           {inspect
             ? selection
               ? `Selected: ${selection}`
