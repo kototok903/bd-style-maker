@@ -8,9 +8,15 @@ import {
 } from "@/features/dependencies/lib/dependencies";
 
 export type CachedStylesheet = { source: string; url: string };
+export type StylesheetImport = {
+  // null identifies an import in the theme currently being edited.
+  url: string | null;
+  line: number;
+};
 export type ThemeResource = {
   url: string;
   status: "loaded" | "failed" | "paused";
+  importedFrom: StylesheetImport;
   message?: string;
 };
 export type CompiledTheme = {
@@ -19,6 +25,32 @@ export type CompiledTheme = {
   native?: boolean;
 };
 export type StylesheetCache = Map<string, CachedStylesheet>;
+
+export function groupFailedStylesheets(resources: ThemeResource[]) {
+  const groups = new Map<
+    string,
+    { url: string; messages: string[]; importedFrom: StylesheetImport[] }
+  >();
+  for (const resource of resources) {
+    if (resource.status !== "failed") continue;
+    let group = groups.get(resource.url);
+    if (!group) {
+      group = { url: resource.url, messages: [], importedFrom: [] };
+      groups.set(resource.url, group);
+    }
+    if (resource.message && !group.messages.includes(resource.message))
+      group.messages.push(resource.message);
+    if (
+      !group.importedFrom.some(
+        (origin) =>
+          origin.url === resource.importedFrom.url &&
+          origin.line === resource.importedFrom.line,
+      )
+    )
+      group.importedFrom.push(resource.importedFrom);
+  }
+  return [...groups.values()];
+}
 
 function importTarget(params: string) {
   const nodes = valueParser(params).nodes;
@@ -140,9 +172,10 @@ export async function compileTheme(
       }
       if (node.type !== "atrule" || node.name !== "import") continue;
       const { url: path, conditions } = importTarget(node.params),
-        url = resolveResource(path, base);
+        url = resolveResource(path, base),
+        importedFrom = { url: base || null, line: node.source!.start!.line };
       if (!external) {
-        resources.push({ url: url ?? path, status: "paused" });
+        resources.push({ url: url ?? path, status: "paused", importedFrom });
         node.remove();
         continue;
       }
@@ -168,7 +201,7 @@ export async function compileTheme(
           new Set([...ancestry, url]),
           depth + 1,
         );
-        resources.push({ url, status: "loaded" });
+        resources.push({ url, status: "loaded", importedFrom });
         node.replaceWith(...wrapImport(children, conditions));
       } catch (error) {
         signal.throwIfAborted();
@@ -176,6 +209,7 @@ export async function compileTheme(
         resources.push({
           url: url ?? path,
           status: "failed",
+          importedFrom,
           message:
             error instanceof Error ? error.message : "Network or CORS failure",
         });

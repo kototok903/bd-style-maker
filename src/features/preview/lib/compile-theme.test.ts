@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { compileTheme } from "@/features/preview/lib/compile-theme";
+import {
+  compileTheme,
+  groupFailedStylesheets,
+} from "@/features/preview/lib/compile-theme";
 import {
   analyzeTheme,
   editDeclaration,
@@ -48,6 +51,78 @@ describe("actual theme configuration files", () => {
 });
 
 describe("preview import compilation", () => {
+  it("groups a shared missing dependency once and retains both importing stylesheets", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.endsWith("pios.css"))
+          return new Response(
+            '@import "./squared.css";\n@import "./missing.css";',
+          );
+        if (url.endsWith("squared.css"))
+          return new Response('/* dependency */\n\n@import "./missing.css";');
+        return new Response("Not found", { status: 404 });
+      }),
+    );
+    const result = await compileTheme(
+      '@import "https://example.com/pios.css";',
+      true,
+      new AbortController().signal,
+    );
+    expect(groupFailedStylesheets(result.resources)).toEqual([
+      {
+        url: "https://example.com/missing.css",
+        messages: ["HTTP 404"],
+        importedFrom: [
+          { url: "https://example.com/squared.css", line: 3 },
+          { url: "https://example.com/pios.css", line: 2 },
+        ],
+      },
+    ]);
+  });
+  it("keeps separate local import locations while grouping repeated visits to the same location", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("Not found", { status: 404 })),
+    );
+    const result = await compileTheme(
+      '@import "https://example.com/missing.css";\n\n@import "https://example.com/missing.css";',
+      true,
+      new AbortController().signal,
+    );
+    expect(
+      groupFailedStylesheets([...result.resources, ...result.resources]),
+    ).toEqual([
+      {
+        url: "https://example.com/missing.css",
+        messages: ["HTTP 404"],
+        importedFrom: [
+          { url: null, line: 1 },
+          { url: null, line: 3 },
+        ],
+      },
+    ]);
+  });
+  it("preserves repeated successful imports and their cascade order", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async (url: string) =>
+          new Response(
+            url.endsWith("blue.css") ? ".x{color:blue}" : ".x{color:red}",
+          ),
+      ),
+    );
+    const result = await compileTheme(
+      '@import "https://example.com/shared.css"; @import "https://example.com/blue.css"; @import "https://example.com/shared.css";',
+      true,
+      new AbortController().signal,
+    );
+    expect(
+      analyzeTheme(result.css).rules.map((rule) => rule.declarations[0].value),
+    ).toEqual(["red", "blue", "red"]);
+    expect(groupFailedStylesheets(result.resources)).toEqual([]);
+  });
   it("loads nested imports before local overrides, rebases assets, and reuses successful sources", async () => {
     const fetcher = vi.fn(
       async (url: string) =>

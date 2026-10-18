@@ -12,7 +12,10 @@ import type {
   CompiledTheme,
   StylesheetCache,
 } from "@/features/preview/lib/compile-theme";
-import { compileTheme } from "@/features/preview/lib/compile-theme";
+import {
+  compileTheme,
+  groupFailedStylesheets,
+} from "@/features/preview/lib/compile-theme";
 import type { ThemeAnalysis } from "@/features/theme/theme-types";
 
 type Props = {
@@ -192,7 +195,7 @@ export function ThemePreview({
     });
   }, [compiled, analysis.rules, light, inspect, ready]);
   useEffect(() => () => channel.current?.port1.close(), []);
-  const failed = compiled.resources.filter((r) => r.status === "failed"),
+  const failed = groupFailedStylesheets(compiled.resources),
     paused = compiled.resources.filter((r) => r.status === "paused"),
     loaded = compiled.resources.filter((r) => r.status === "loaded").length;
   return (
@@ -218,7 +221,7 @@ export function ThemePreview({
               error ||
               (compiled.native
                 ? "Some imported styles could not load"
-                : `${failed.length} stylesheets could not load`)}
+                : `${failed.length} stylesheet${failed.length === 1 ? "" : "s"} could not load`)}
           </AlertTitle>
           <AlertDescription>
             {compiled.native && (
@@ -230,13 +233,29 @@ export function ThemePreview({
             {failed.length > 0 && (
               <details>
                 <summary className="cursor-pointer">
-                  {failed.length} sources unavailable for inspection
+                  {failed.length} source{failed.length === 1 ? "" : "s"}{" "}
+                  unavailable for inspection
                 </summary>
-                {failed.map((r) => (
-                  <p key={r.url} className="break-all">
-                    {r.url}: {r.message}
-                  </p>
-                ))}
+                <div className="mt-2 flex flex-col gap-3">
+                  {failed.map((resource) => (
+                    <div key={resource.url} className="flex flex-col gap-1">
+                      <div className="break-all">
+                        {resource.url}: {resource.messages.join("; ")}
+                      </div>
+                      <div>Imported by:</div>
+                      <ul className="list-disc pl-5">
+                        {resource.importedFrom.map((origin) => (
+                          <li
+                            key={JSON.stringify(origin)}
+                            className="break-all"
+                          >
+                            {origin.url ?? "Current theme"} · line {origin.line}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               </details>
             )}
             <Button
