@@ -9,8 +9,7 @@ import { readDraft, saveDraft } from "@/features/projects/lib/draft-storage";
 export function useThemeSession() {
   const [state, dispatch] = useReducer(sessionReducer, initialSession);
   const [hydrated, setHydrated] = useState(false);
-  const [storage, setStorage] = useState("Loading local workspace…");
-  const [recovered, setRecovered] = useState(false);
+  const [storageError, setStorageError] = useState("");
   const writes = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
     let active = true;
@@ -19,13 +18,13 @@ export function useThemeSession() {
         if (!active) return;
         if (project) {
           dispatch({ type: "open", project });
-          setRecovered(true);
         }
-        setStorage(project ? "Local draft recovered" : "Local workspace ready");
       })
       .catch(() => {
         if (active)
-          setStorage("Draft storage unavailable. Export to keep your work.");
+          setStorageError(
+            "Draft storage unavailable. Export to keep your work.",
+          );
       })
       .finally(() => {
         if (active) setHydrated(true);
@@ -36,21 +35,16 @@ export function useThemeSession() {
   }, []);
   useEffect(() => {
     if (!hydrated) return;
-    setStorage("Saving local draft…");
     const timer = setTimeout(() => {
       writes.current = writes.current
         .catch(() => {})
         .then(() => saveDraft(state.project));
       writes.current
-        .then(() =>
-          setStorage(
-            state.project
-              ? "Draft saved on this device"
-              : "Local workspace ready",
-          ),
-        )
+        .then(() => setStorageError(""))
         .catch(() =>
-          setStorage("Draft could not be saved. Export to keep your work."),
+          setStorageError(
+            "Draft could not be saved. Export to keep your work.",
+          ),
         );
     }, 400);
     return () => clearTimeout(timer);
@@ -69,9 +63,7 @@ export function useThemeSession() {
     state,
     dispatch,
     hydrated,
-    storage,
+    storageError,
     dirty,
-    recovered,
-    dismissRecovery: () => setRecovered(false),
   };
 }

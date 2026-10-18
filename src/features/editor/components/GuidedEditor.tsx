@@ -326,10 +326,8 @@ export function GuidedEditor({
                   )
                 }
               />
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-subtle-foreground">
-                <code className="font-mono text-[10px] wrap-anywhere">
-                  {decl.property}
-                </code>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-subtle-foreground">
+                <code className="font-mono wrap-anywhere">{decl.property}</code>
                 {allScopes && (
                   <span>
                     {analysis.rules.find((r) => r.id === decl.ruleId)?.selector}

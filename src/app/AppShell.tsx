@@ -1,22 +1,25 @@
 import {
   BracesIcon,
-  CheckIcon,
   Code2Icon,
+  CrosshairIcon,
   DownloadIcon,
   FileCode2Icon,
   FilePenLineIcon,
   FileTextIcon,
   FolderOpenIcon,
   GitCompareArrowsIcon,
-  HistoryIcon,
   LinkIcon,
+  MoonIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PlusIcon,
   Redo2Icon,
+  ScanIcon,
   SlidersHorizontalIcon,
+  SunIcon,
   Undo2Icon,
   XIcon,
+  ZoomInIcon,
 } from "lucide-react";
 import {
   lazy,
@@ -85,15 +88,7 @@ const SourceEditor = lazy(() =>
 );
 
 export function AppShell() {
-  const {
-    state,
-    dispatch,
-    hydrated,
-    storage,
-    dirty,
-    recovered,
-    dismissRecovery,
-  } = useThemeSession();
+  const { state, dispatch, hydrated, storageError, dirty } = useThemeSession();
   const project = state.project;
   const input = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState("guided");
@@ -107,6 +102,9 @@ export function AppShell() {
   const [external, setExternal] = useState(true);
   const [base, setBase] = useState("");
   const [compare, setCompare] = useState(false);
+  const [previewLight, setPreviewLight] = useState(false);
+  const [previewInspect, setPreviewInspect] = useState(false);
+  const [previewFit, setPreviewFit] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
@@ -155,7 +153,7 @@ export function AppShell() {
     setCollapsed(false);
     setError("");
     setMessage(`Opened ${next.fileName}.`);
-    dismissRecovery();
+    setPreviewInspect(false);
   }
   function requestOpen(text: string, fileName: string) {
     const next = createProject(text, fileName);
@@ -220,15 +218,17 @@ export function AppShell() {
     icon: React.ReactNode,
     action: () => void,
     disabled = false,
+    pressed?: boolean,
   ) {
     return (
       <Tooltip>
         <TooltipTrigger
           render={
             <Button
-              variant="ghost"
+              variant={pressed ? "secondary" : "ghost"}
               size="icon-sm"
               aria-label={label}
+              aria-pressed={pressed}
               onClick={action}
               disabled={disabled}
             />
@@ -287,22 +287,17 @@ export function AppShell() {
           }}
           disabled={!hydrated}
         />
-        <header className="flex min-h-[78px] shrink-0 items-center gap-[25px] border-b px-7 py-[18px] max-[1050px]:min-h-[66px] max-[1050px]:px-5 max-[1050px]:py-[15px] max-[760px]:gap-3 max-[760px]:px-4 max-[760px]:py-[13px] max-[400px]:gap-2 max-[400px]:px-3 min-[1600px]:px-9">
+        <header className="flex h-12 shrink-0 items-center gap-5 border-b px-4 max-[760px]:gap-3 max-[400px]:gap-2 max-[400px]:px-3">
           <div className="flex shrink-0 items-center gap-[11px] max-[400px]:gap-2">
-            <div className="grid size-[34px] place-items-center rounded-[9px] bg-primary text-primary-foreground max-[400px]:size-7">
-              <BracesIcon className="size-[22px] max-[400px]:size-5" />
+            <div className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <BracesIcon className="size-5" />
             </div>
-            <div>
-              <strong className="block text-[14px] font-semibold tracking-[-0.35px] max-[400px]:text-[12px]">
-                BD Style Maker
-              </strong>
-              <span className="mt-px block text-[10px] text-subtle-foreground max-[1050px]:hidden">
-                A little more like you.
-              </span>
-            </div>
+            <strong className="text-[14px] font-semibold tracking-[-0.35px] max-[400px]:text-[12px]">
+              BD Style Maker
+            </strong>
           </div>
           {project && (
-            <div className="flex min-w-0 items-center gap-[9px] border-l pl-6 text-[12px] text-muted-foreground max-[1050px]:pl-[18px] max-[760px]:hidden">
+            <div className="flex min-w-0 items-center gap-[9px] border-l pl-4 text-[12px] text-muted-foreground max-[760px]:hidden">
               <FileCode2Icon className="size-[15px] shrink-0" />
               <span className="truncate">{project.fileName}</span>
               {dirty && (
@@ -322,6 +317,7 @@ export function AppShell() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="Open theme"
                   onClick={() => input.current?.click()}
                 >
                   <FolderOpenIcon data-icon="inline-start" />
@@ -354,20 +350,12 @@ export function AppShell() {
             </AlertDescription>
           </Alert>
         )}
-        {recovered && (
-          <Alert className="shrink-0 rounded-none border-x-0 border-t-0">
-            <HistoryIcon />
-            <AlertDescription className="flex items-center justify-between gap-3">
-              Your last workspace was recovered from this device.
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label="Dismiss recovery notice"
-                onClick={dismissRecovery}
-              >
-                <XIcon />
-              </Button>
-            </AlertDescription>
+        {storageError && (
+          <Alert
+            variant="destructive"
+            className="shrink-0 rounded-none border-x-0 border-t-0"
+          >
+            <AlertDescription>{storageError}</AlertDescription>
           </Alert>
         )}
         {!project ? (
@@ -380,8 +368,17 @@ export function AppShell() {
           />
         ) : (
           <>
-            <div className="flex shrink-0 items-center justify-between gap-2.5 border-b px-[22px] py-2.5 max-[760px]:px-3 max-[760px]:py-2">
+            <div
+              className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b px-3 py-1"
+              role="toolbar"
+              aria-label="Theme workspace"
+            >
               <div className="flex items-center gap-[3px]">
+                {tool(
+                  collapsed ? "Show editor" : "Hide editor",
+                  collapsed ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />,
+                  () => setCollapsed(!collapsed),
+                )}
                 {tool(
                   "Undo (⌘/Ctrl Z)",
                   <Undo2Icon />,
@@ -398,6 +395,7 @@ export function AppShell() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="Theme info"
                   onClick={() => setDialog("metadata")}
                 >
                   <FileTextIcon data-icon="inline-start" />
@@ -406,6 +404,7 @@ export function AppShell() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="Imports"
                   onClick={() => setDialog("imports")}
                 >
                   <LinkIcon data-icon="inline-start" />
@@ -417,16 +416,39 @@ export function AppShell() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="Changes"
                   onClick={() => setDialog("changes")}
                 >
                   <FilePenLineIcon data-icon="inline-start" />
                   <span className="max-[760px]:hidden">Changes</span>
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-1">
+                {tool(
+                  "Inspect preview element",
+                  <CrosshairIcon />,
+                  () => setPreviewInspect(!previewInspect),
+                  false,
+                  previewInspect,
+                )}
+                {tool(
+                  previewFit ? "Preview at 100%" : "Fit preview to pane",
+                  previewFit ? <ZoomInIcon /> : <ScanIcon />,
+                  () => setPreviewFit(!previewFit),
+                  false,
+                  !previewFit,
+                )}
+                {tool(
+                  previewLight ? "Use dark preview" : "Use light preview",
+                  previewLight ? <SunIcon /> : <MoonIcon />,
+                  () => setPreviewLight(!previewLight),
+                )}
                 <Button
                   variant={compare ? "secondary" : "ghost"}
                   size="sm"
+                  aria-label={
+                    compare ? "View edited theme" : "Compare original"
+                  }
                   aria-pressed={compare}
                   onClick={() => setCompare(!compare)}
                 >
@@ -435,11 +457,6 @@ export function AppShell() {
                     {compare ? "Viewing original" : "Compare original"}
                   </span>
                 </Button>
-                {tool(
-                  collapsed ? "Show editor" : "Hide editor",
-                  collapsed ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />,
-                  () => setCollapsed(!collapsed),
-                )}
               </div>
             </div>
             <div className="min-h-0 flex-1 max-[760px]:overflow-auto">
@@ -546,6 +563,9 @@ export function AppShell() {
                 <ResizablePanel id="preview" minSize="35%">
                   <ThemePreview
                     analysis={previewAnalysis}
+                    light={previewLight}
+                    inspect={previewInspect}
+                    fit={previewFit}
                     stale={!!analysis.diagnostic && !compare}
                     external={external}
                     onEnableResources={() => setExternal(true)}
@@ -559,25 +579,9 @@ export function AppShell() {
             </div>
           </>
         )}
-        <footer className="flex min-h-[38px] shrink-0 items-center gap-5 border-t px-[25px] py-2.5 text-[10px] text-subtle-foreground max-[760px]:gap-3 max-[760px]:px-4 max-[760px]:text-[9px]">
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <CheckIcon className="size-3 text-status" />
-            {hydrated ? storage : "Loading local workspace…"}
-          </span>
-          <span
-            className="truncate max-[760px]:hidden"
-            role="status"
-            aria-live="polite"
-          >
-            {message ||
-              (project
-                ? `${analysis.variables.length} variables · ${analysis.rules.length} rules · UTF-8`
-                : "Made for your own CSS.")}
-          </span>
-          <span className="ml-auto whitespace-nowrap max-[1050px]:hidden">
-            {project ? "⌘/Ctrl S to export" : "Files stay on your device"}
-          </span>
-        </footer>
+        <span className="sr-only" role="status" aria-live="polite">
+          {message}
+        </span>
         {dragging && (
           <div className="pointer-events-none fixed inset-3 z-100 flex flex-col items-center justify-center gap-[15px] rounded-[14px] border-2 border-dashed border-ring bg-background/95">
             <FolderOpenIcon className="size-10 text-ring" />

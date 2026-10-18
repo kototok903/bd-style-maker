@@ -1,10 +1,4 @@
-import {
-  CrosshairIcon,
-  MoonIcon,
-  RefreshCwIcon,
-  SunIcon,
-  UnplugIcon,
-} from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -24,6 +18,9 @@ import type { ThemeAnalysis } from "@/features/theme/theme-types";
 type Props = {
   analysis: ThemeAnalysis;
   stale: boolean;
+  light: boolean;
+  inspect: boolean;
+  fit: boolean;
   external: boolean;
   original?: string | null;
   onSelect: (selector: string) => void;
@@ -33,6 +30,9 @@ type Props = {
 export function ThemePreview({
   analysis,
   stale,
+  light,
+  inspect,
+  fit,
   external,
   original,
   onSelect,
@@ -41,7 +41,6 @@ export function ThemePreview({
   const frame = useRef<HTMLIFrameElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1280, height: 800 });
-  const [fit, setFit] = useState(true);
   useEffect(() => {
     if (!canvas.current) return;
     const observer = new ResizeObserver((entries) => {
@@ -55,11 +54,8 @@ export function ThemePreview({
   const channel = useRef<MessageChannel | null>(null);
   const revision = useRef(0);
   const cache = useRef<StylesheetCache>(new Map());
-  const [light, setLight] = useState(false),
-    [inspect, setInspect] = useState(false);
   const [ready, setReady] = useState(false),
     [matched, setMatched] = useState<number | null>(null);
-  const [selection, setSelection] = useState("");
   const [snapshot, setSnapshot] = useState("");
   const [fixtureError, setFixtureError] = useState("");
   const [error, setError] = useState("");
@@ -158,7 +154,6 @@ export function ThemePreview({
         typeof data.selector === "string" &&
         typeof data.name === "string"
       ) {
-        setSelection(data.name);
         selectedCallback.current(data.selector);
       }
     };
@@ -187,85 +182,38 @@ export function ThemePreview({
     loaded = compiled.resources.filter((r) => r.status === "loaded").length;
   return (
     <section
-      className="flex h-full min-h-0 flex-col px-[27px] pt-[19px] pb-4 max-[1050px]:p-[18px] max-[760px]:border-t max-[760px]:px-4 max-[760px]:pb-[22px] min-[1600px]:px-[34px] min-[1600px]:pt-[23px] min-[1600px]:pb-5"
+      className="relative flex h-full min-h-0 flex-col overflow-hidden"
       aria-label="Live theme preview"
+      aria-busy={!ready || loading}
+      data-matched-selectors={matched ?? undefined}
       data-preview-diagnostics={JSON.stringify(samples)}
       data-stylesheets-loaded={loaded}
       data-native-styles-status={compiled.native ? nativeStatus : undefined}
     >
-      <header className="mb-[18px] flex shrink-0 flex-wrap items-center justify-between gap-3 max-[760px]:gap-2.5">
-        <div className="flex items-center gap-[7px] text-[11px] text-muted-foreground">
-          <span className="size-[5px] rounded-full bg-status ring-[3px] ring-status/9" />
-          <span>{loading ? "Loading theme styles…" : "Live preview"}</span>
-          {original !== null && original !== undefined && (
-            <Badge variant="secondary">Original</Badge>
-          )}
-          {stale && <Badge variant="outline">Last valid CSS</Badge>}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={inspect ? "secondary" : "ghost"}
-            size="icon-sm"
-            aria-label="Inspect preview element"
-            aria-pressed={inspect}
-            onClick={() => setInspect(!inspect)}
-          >
-            <CrosshairIcon />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Toggle preview appearance"
-            onClick={() => setLight(!light)}
-          >
-            {light ? (
-              <SunIcon data-icon="inline-start" />
-            ) : (
-              <MoonIcon data-icon="inline-start" />
-            )}
-            {light ? "Light" : "Dark"}
-          </Button>
-        </div>
-      </header>
-      {(fixtureError || error || failed.length > 0) && (
+      {(fixtureError ||
+        error ||
+        (failed.length > 0 &&
+          (!compiled.native || nativeStatus === "failed"))) && (
         <Alert
-          className="mb-3 max-h-[150px] shrink-0 overflow-y-auto"
-          variant={
-            fixtureError ||
-            error ||
-            !compiled.native ||
-            nativeStatus === "failed"
-              ? "destructive"
-              : "default"
-          }
+          className="max-h-[150px] shrink-0 overflow-y-auto rounded-none border-x-0 border-t-0"
+          variant="destructive"
         >
           <AlertTitle>
             {fixtureError ||
               error ||
               (compiled.native
-                ? nativeStatus === "loaded"
-                  ? "Styles loaded through the browser"
-                  : nativeStatus === "failed"
-                    ? "Some imported styles could not load"
-                    : "Loading styles through the browser…"
+                ? "Some imported styles could not load"
                 : `${failed.length} stylesheets could not load`)}
           </AlertTitle>
           <AlertDescription>
             {compiled.native && (
               <p>
-                {nativeStatus === "failed"
-                  ? "Check that this theme’s import URLs are still available. The preview may be incomplete."
-                  : "The browser is loading the original imports. Some remote sources cannot be inspected or counted."}
+                Check that this theme’s import URLs are still available. The
+                preview may be incomplete.
               </p>
             )}
             {failed.length > 0 && (
-              <details
-                open={
-                  compiled.native && nativeStatus === "loaded"
-                    ? false
-                    : undefined
-                }
-              >
+              <details>
                 <summary className="cursor-pointer">
                   {failed.length} sources unavailable for inspection
                 </summary>
@@ -291,7 +239,7 @@ export function ThemePreview({
         </Alert>
       )}
       {paused.length > 0 && (
-        <Alert className="mb-3 max-h-[150px] shrink-0 overflow-y-auto">
+        <Alert className="max-h-[150px] shrink-0 overflow-y-auto rounded-none border-x-0 border-t-0">
           <AlertTitle>This theme needs its imported styles</AlertTitle>
           <AlertDescription>
             <span>
@@ -305,7 +253,7 @@ export function ThemePreview({
         </Alert>
       )}
       <div
-        className="relative min-h-0 flex-1 overflow-hidden rounded-[11px] border bg-editor-surface shadow-[0_5px_30px_#00000010]"
+        className="relative min-h-0 flex-1 overflow-hidden bg-editor-surface"
         ref={canvas}
         style={{ overflow: fit ? "hidden" : "auto" }}
       >
@@ -332,41 +280,14 @@ export function ThemePreview({
           </div>
         )}
       </div>
-      <footer className="flex flex-wrap items-center justify-between gap-2.5 pt-[13px] pb-2.5 text-[10px] text-subtle-foreground">
-        <span>
-          <button
-            type="button"
-            className="mr-3 text-foreground underline underline-offset-[3px]"
-            onClick={() => setFit(!fit)}
-            aria-label="Toggle preview zoom"
-          >
-            {fit
-              ? `Fit · ${Math.round(scale * 100)}%`
-              : "100% · scroll to explore"}
-          </button>
-          {compiled.native
-            ? `Discord DOM snapshot · browser imports ${nativeStatus}`
-            : `Discord DOM snapshot · ${loaded} imported stylesheet${loaded === 1 ? "" : "s"} loaded`}
-        </span>
-        <span>
-          {matched === null
-            ? "Connecting…"
-            : `${matched} of ${analysis.rules.length} local selectors match`}
-        </span>
-      </footer>
-      <div className="flex flex-wrap justify-between gap-2 text-[9px] text-subtle-foreground">
-        <span className="flex items-center gap-[5px]">
-          <UnplugIcon className="size-[11px]" />
-          {external ? "Theme resources enabled" : "External resources paused"}
-        </span>
-        <span className="flex items-center gap-[5px]">
-          {inspect
-            ? selection
-              ? `Selected: ${selection}`
-              : "Select an element to edit its styles"
-            : "Captured Discord markup; some client states are unavailable."}
-        </span>
-      </div>
+      {stale && (
+        <Badge
+          variant="outline"
+          className="pointer-events-none absolute top-2 left-2"
+        >
+          Last valid CSS
+        </Badge>
+      )}
     </section>
   );
 }
