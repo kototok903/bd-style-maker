@@ -9,9 +9,19 @@ import valueParser from "postcss-value-parser";
 const directory = "src/features/preview/fixture";
 const manifest = await Bun.file("scripts/discord-css-manifest.json").json();
 const artwork = `data:image/svg+xml;base64,${Buffer.from(await Bun.file("public/preview-artwork.svg").text()).toString("base64")}`;
-const body = (
-  await Bun.file(`${directory}/discord-body.html`).text()
-).replaceAll("/preview-artwork.svg", artwork);
+let body = (await Bun.file(`${directory}/discord-body.html`).text()).replaceAll(
+  "/preview-artwork.svg",
+  artwork,
+);
+for (const name of ["forest", "mountain", "coast"]) {
+  const image = await Bun.file(
+    `public/preview-server-${name}.jpg`,
+  ).arrayBuffer();
+  body = body.replaceAll(
+    `/preview-server-${name}.jpg`,
+    `data:image/jpeg;base64,${Buffer.from(image).toString("base64")}`,
+  );
+}
 const sources = new Array<string>(manifest.styles.length);
 const hashes = new Array<string>(manifest.styles.length);
 const masks = new Set<string>();

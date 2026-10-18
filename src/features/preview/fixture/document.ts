@@ -22,7 +22,7 @@ export function fixtureDocument(
   html: string,
 ): string {
   const sources = external ? "https:" : "";
-  const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${token}'; style-src 'unsafe-inline' ${sources}; img-src data: ${sources}; font-src data: ${sources}; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"><style>[hidden]{display:none!important}html,body{margin:0;width:100%;height:100%}body[data-inspect=true] [data-element]:hover{outline:2px solid var(--brand-500,#a7b7ff)!important;outline-offset:-2px;cursor:crosshair!important}</style>`;
+  const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${token}'; style-src 'unsafe-inline' ${sources}; img-src data: ${sources}; font-src data: ${sources}; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"><style>[hidden]{display:none!important}html,body{margin:0;width:100%;height:100%}body[data-inspect=true],body[data-inspect=true] *{cursor:crosshair!important}</style>`;
   const script = `<script nonce="${token}">${bootstrap}</script>`;
   return html
     .replace("<!--BD_HEAD-->", head)

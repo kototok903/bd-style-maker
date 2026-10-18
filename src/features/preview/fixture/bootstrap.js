@@ -27,6 +27,98 @@
     .querySelectorAll(".slateContainer_ec4baf")
     .forEach((el) => el.style.removeProperty("height"));
 
+  const outline = document.createElement("div");
+  outline.id = "bd-inspector-outline";
+  outline.hidden = true;
+  outline.style.cssText =
+    "position:fixed;pointer-events:none;z-index:2147483647;box-sizing:border-box;border:2px solid #a7b7ff;background:rgba(167,183,255,.08)";
+  const label = document.createElement("span");
+  label.style.cssText =
+    "position:absolute;left:-2px;top:0;transform:translateY(-100%);padding:3px 6px;border-radius:3px;background:#a7b7ff;color:#17181b;white-space:nowrap;font:12px system-ui,sans-serif";
+  outline.append(label);
+  document.body.append(outline);
+  function inspectedElement(target) {
+    return target instanceof Element ? target.closest("[data-element]") : null;
+  }
+  function selectorFor(el) {
+    for (const rule of rules) {
+      if (
+        [":root", "body", "html", "*", ".theme-dark", ".theme-light"].includes(
+          rule.selector,
+        )
+      )
+        continue;
+      try {
+        if (el.matches(rule.selector)) return rule.selector;
+      } catch {
+        /* Unsupported selector. */
+      }
+    }
+    return el.dataset.selector;
+  }
+  document.addEventListener("pointermove", (event) => {
+    const el = inspect && inspectedElement(event.target);
+    outline.hidden = !el;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    Object.assign(outline.style, {
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+    });
+    label.textContent = `${el.dataset.element} · ${selectorFor(el)}`;
+    label.style.top = rect.top < 28 ? "2px" : "0";
+    label.style.transform = rect.top < 28 ? "none" : "translateY(-100%)";
+  });
+  document.addEventListener("pointerleave", () => {
+    outline.hidden = true;
+  });
+  document.addEventListener(
+    "scroll",
+    () => {
+      outline.hidden = true;
+    },
+    true,
+  );
+  document.addEventListener("keydown", (event) => {
+    if (inspect && event.key === "Escape") {
+      event.preventDefault();
+      inspect = false;
+      outline.hidden = true;
+      document.body.dataset.inspect = "false";
+      port?.postMessage({ type: "inspect-cancelled" });
+    }
+  });
+
+  const tooltipAnchor = document.querySelector("[data-preview-tooltip-anchor]");
+  const tooltipLayer = document.querySelector("[data-preview-tooltip-layer]");
+  function positionTooltip() {
+    if (!tooltipAnchor || !tooltipLayer) return;
+    const rect = tooltipAnchor.getBoundingClientRect();
+    const left = Math.min(
+      rect.right + 12,
+      innerWidth - tooltipLayer.offsetWidth - 8,
+    );
+    const top = Math.max(
+      8,
+      Math.min(
+        rect.top + (rect.height - tooltipLayer.offsetHeight) / 2,
+        innerHeight - tooltipLayer.offsetHeight - 8,
+      ),
+    );
+    tooltipLayer.style.left = `${Math.max(8, left)}px`;
+    tooltipLayer.style.top = `${top}px`;
+  }
+  if (tooltipAnchor && tooltipLayer) {
+    const tooltipObserver = new ResizeObserver(positionTooltip);
+    tooltipObserver.observe(tooltipAnchor);
+    tooltipObserver.observe(tooltipLayer);
+    window.addEventListener("resize", positionTooltip);
+    document.addEventListener("scroll", positionTooltip, true);
+    positionTooltip();
+  }
+
   function sample(selector, pseudo) {
     const element = document.querySelector(selector);
     if (!element) return null;
@@ -62,6 +154,7 @@
   function applied() {
     if (!port) return;
     requestAnimationFrame(() => {
+      positionTooltip();
       if (!positioned) {
         const scroller = document.querySelector(".scroller__36d07");
         if (scroller) {
@@ -90,6 +183,8 @@
           message: sample(".message__5126c"),
           input: sample(".channelTextArea_f75fb0"),
           label: sample(".sidebarList__5e434", "::after"),
+          tooltip: sample("#preview-server-tooltip"),
+          selectedServer: sample(".guilds__5e434 .item__58105.selected__58105"),
           viewport: { width: innerWidth, height: innerHeight },
           regions: Object.fromEntries(
             regions.map((s) => {
@@ -157,6 +252,7 @@
         el.classList.toggle("images-dark", !m.light);
       }
       inspect = !!m.inspect;
+      if (!inspect) outline.hidden = true;
       document.body.dataset.inspect = String(inspect);
       rules = Array.isArray(m.rules) ? m.rules.slice(0, 3000) : [];
       applied();
@@ -175,6 +271,21 @@
       const target = event.target;
       if (target.closest("a,form")) event.preventDefault();
       if (!inspect) {
+        const folderButton = target.closest("[data-preview-folder]");
+        if (folderButton) {
+          const list = document.getElementById(
+            folderButton.getAttribute("aria-controls"),
+          );
+          if (list) {
+            list.hidden = !list.hidden;
+            folderButton.setAttribute("aria-expanded", String(!list.hidden));
+            folderButton
+              .closest(".folderGroup__48112")
+              ?.classList.toggle("isExpanded__48112", !list.hidden);
+            applied();
+          }
+          return;
+        }
         const toggle = target.closest(
           '[aria-label="Show Member List"],[aria-label="Hide Member List"]',
         );
@@ -194,23 +305,13 @@
       if (!port) return;
       event.preventDefault();
       event.stopPropagation();
-      const el = target.closest("[data-element]");
+      const el = inspectedElement(target);
       if (!el) return;
-      let selector = el.dataset.selector;
-      for (const rule of rules) {
-        try {
-          if (
-            rule.selector !== ":root" &&
-            rule.selector !== "body" &&
-            el.matches(rule.selector)
-          ) {
-            selector = rule.selector;
-            break;
-          }
-        } catch {
-          /* Unsupported selector. */
-        }
-      }
+      const selector = selectorFor(el);
+      if (!selector) return;
+      inspect = false;
+      outline.hidden = true;
+      document.body.dataset.inspect = "false";
       port.postMessage({
         type: "selected",
         name: el.dataset.element,

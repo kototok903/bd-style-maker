@@ -48,6 +48,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -57,8 +58,9 @@ import {
 } from "@/components/ui/tooltip";
 import { DependenciesDialog } from "@/features/dependencies/components/DependenciesDialog";
 import { previewCss } from "@/features/dependencies/lib/dependencies";
-import { GuidedEditor } from "@/features/editor/components/GuidedEditor";
 import { OpenTheme } from "@/features/editor/components/OpenTheme";
+import type { PreviewInspection } from "@/features/editor/components/VisualEditor";
+import { VisualEditor } from "@/features/editor/components/VisualEditor";
 import {
   ChangesDialog,
   ExportDialog,
@@ -91,8 +93,9 @@ export function AppShell() {
   const { state, dispatch, hydrated, storageError, dirty } = useThemeSession();
   const project = state.project;
   const input = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState("guided");
+  const [mode, setMode] = useState("visual");
   const [selectedRule, setSelectedRule] = useState("");
+  const [inspection, setInspection] = useState<PreviewInspection | null>(null);
   const [jump, setJump] = useState<{ offset: number; nonce: number } | null>(
     null,
   );
@@ -143,8 +146,9 @@ export function AppShell() {
 
   function activate(next: ThemeProject) {
     dispatch({ type: "open", project: next });
-    setMode(analyzeTheme(next.text).diagnostic ? "css" : "guided");
+    setMode(analyzeTheme(next.text).diagnostic ? "css" : "visual");
     setSelectedRule("");
+    setInspection(null);
     setJump(null);
     setLastValid(emptyAnalysis);
     setBase("");
@@ -201,17 +205,11 @@ export function AppShell() {
 
   function selectPreview(selector: string) {
     const matching = analysis.rules.find((r) => r.selector === selector);
-    if (matching) {
-      setSelectedRule(matching.id);
-      setMode("guided");
-      setCollapsed(false);
-      setMessage(
-        `Selected ${selector}. Choose Selector styles to edit its properties.`,
-      );
-    } else
-      setMessage(
-        `No local rule for ${selector}. Add this selector in the guided editor or write it in CSS.`,
-      );
+    setPreviewInspect(false);
+    setMode("visual");
+    setCollapsed(false);
+    setInspection({ selector, create: !matching, nonce: Date.now() });
+    if (matching) setSelectedRule(matching.id);
   }
   function tool(
     label: string,
@@ -219,6 +217,7 @@ export function AppShell() {
     action: () => void,
     disabled = false,
     pressed?: boolean,
+    hint = label,
   ) {
     return (
       <Tooltip>
@@ -236,7 +235,7 @@ export function AppShell() {
         >
           {icon}
         </TooltipTrigger>
-        <TooltipContent>{label}</TooltipContent>
+        <TooltipContent>{hint}</TooltipContent>
       </Tooltip>
     );
   }
@@ -379,6 +378,7 @@ export function AppShell() {
                   collapsed ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />,
                   () => setCollapsed(!collapsed),
                 )}
+                <Separator orientation="vertical" className="mx-2 my-1" />
                 {tool(
                   "Undo (⌘/Ctrl Z)",
                   <Undo2Icon />,
@@ -430,6 +430,7 @@ export function AppShell() {
                   () => setPreviewInspect(!previewInspect),
                   false,
                   previewInspect,
+                  "Inspect: hover over the preview, then click an outlined area to edit its CSS. Esc cancels.",
                 )}
                 {tool(
                   previewFit ? "Preview at 100%" : "Fit preview to pane",
@@ -486,9 +487,9 @@ export function AppShell() {
                   >
                     <div className="px-[22px] pt-[18px] pb-1.5 max-[1050px]:px-[17px] max-[1050px]:pt-4 max-[1050px]:pb-[5px] max-[760px]:px-[22px] min-[1600px]:px-7 min-[1600px]:pt-[22px]">
                       <TabsList className="w-full">
-                        <TabsTrigger value="guided">
+                        <TabsTrigger value="visual">
                           <SlidersHorizontalIcon />
-                          Guided editor
+                          Visual editor
                         </TabsTrigger>
                         <TabsTrigger value="css">
                           <Code2Icon />
@@ -497,12 +498,15 @@ export function AppShell() {
                       </TabsList>
                     </div>
                     <TabsContent
-                      value="guided"
+                      value="visual"
+                      keepMounted
                       className="min-h-0 overflow-hidden"
                     >
                       <ScrollArea className="h-full">
-                        <GuidedEditor
+                        <VisualEditor
                           key={project.id}
+                          inspection={inspection}
+                          onInspectionHandled={() => setInspection(null)}
                           analysis={analysis}
                           original={original}
                           selectedRule={ruleId}
@@ -565,6 +569,7 @@ export function AppShell() {
                     analysis={previewAnalysis}
                     light={previewLight}
                     inspect={previewInspect}
+                    onInspectEnd={() => setPreviewInspect(false)}
                     fit={previewFit}
                     stale={!!analysis.diagnostic && !compare}
                     external={external}

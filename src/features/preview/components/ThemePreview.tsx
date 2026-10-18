@@ -20,6 +20,7 @@ type Props = {
   stale: boolean;
   light: boolean;
   inspect: boolean;
+  onInspectEnd: () => void;
   fit: boolean;
   external: boolean;
   original?: string | null;
@@ -32,6 +33,7 @@ export function ThemePreview({
   stale,
   light,
   inspect,
+  onInspectEnd,
   fit,
   external,
   original,
@@ -86,6 +88,18 @@ export function ThemePreview({
     () => (snapshot ? fixtureDocument(token, external, snapshot) : ""),
     [token, external, snapshot],
   );
+  const inspectEndCallback = useRef(onInspectEnd);
+  useEffect(() => {
+    inspectEndCallback.current = onInspectEnd;
+  }, [onInspectEnd]);
+  useEffect(() => {
+    if (!inspect) return;
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onInspectEnd();
+    };
+    window.addEventListener("keydown", cancel);
+    return () => window.removeEventListener("keydown", cancel);
+  }, [inspect, onInspectEnd]);
   const selectedCallback = useRef(onSelect);
   useEffect(() => {
     selectedCallback.current = onSelect;
@@ -134,6 +148,7 @@ export function ThemePreview({
       if (!message || typeof message !== "object") return;
       const data = message as Record<string, unknown>;
       if (data.type === "ready") setReady(true);
+      if (data.type === "inspect-cancelled") inspectEndCallback.current();
       if (
         data.type === "resources" &&
         data.revision === revision.current &&
@@ -280,7 +295,18 @@ export function ThemePreview({
           </div>
         )}
       </div>
-      {stale && (
+      {inspect && (
+        <div
+          className="absolute top-2 left-2 flex max-w-[calc(100%-1rem)] items-center gap-3 rounded-lg border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
+          role="status"
+        >
+          Click an outlined area to edit its CSS.
+          <Button size="xs" variant="ghost" onClick={onInspectEnd}>
+            Cancel (Esc)
+          </Button>
+        </div>
+      )}
+      {stale && !inspect && (
         <Badge
           variant="outline"
           className="pointer-events-none absolute top-2 left-2"

@@ -11,3 +11,9 @@ The fixture is captured from the current Discord web client on 2026-10-17, inspe
 The app inserts its own CSP and trusted MessageChannel bootstrap. Theme CSS is assigned through a style node's textContent. Form submission and composer input are intercepted; the member-list icon toggles the captured member region locally. ResizeObserver updates the measured user-panel height used by Discord CSS, and the empty composer sizes naturally when theme typography/padding changes. No preview action can send a Discord message or modify an account.
 
 See `docs/preview-validation.json` for structural comparisons with the live client, including MaterialDiscord and system24. The account remains separate from this static fixture; only sample content appears in the app.
+
+The server rail is curated to seven sample servers in two populated folders. Three small photo icons are bundled from [Lorem Picsum](https://picsum.photos/) (seeds `bd-forest`, `bd-mountain`, `bd-coast`); the remaining icons are generated initials. The generator embeds these local assets in the snapshot, including folder thumbnails, so icons work with external resources disabled. Folder buttons only expand/collapse local sample markup.
+
+Inspect mode outlines the nearest annotated preview area and sends its selector to the editor through the private MessageChannel. Clicking selects an existing local rule or asks to create that selector; it never changes CSS until the user confirms. Escape cancels inspection in either the editor or preview.
+
+The first sample server has Discord's selected pill classes (`selected__58105` and `visible__58105`). Its always-visible tooltip uses the captured client's tooltip, content and pointer classes in a native layer container. The bootstrap anchors that layer to the server on resize, scrolling and theme/font updates, so the tooltip previews the active theme's own colors, typography and geometry.

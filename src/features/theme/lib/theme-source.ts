@@ -1,6 +1,7 @@
 import postcss, { CssSyntaxError } from "postcss";
 import valueParser from "postcss-value-parser";
 
+import { declarationComments } from "@/features/theme/lib/declaration-comments";
 import type {
   ThemeAnalysis,
   ThemeDeclaration,
@@ -72,6 +73,7 @@ export function analyzeTheme(source: string): ThemeAnalysis {
         if (parent.type === "rule") rule.context.unshift(parent.selector);
         parent = parent.parent;
       }
+      const comments = declarationComments(node);
       node.each((decl) => {
         if (
           decl.type !== "decl" ||
@@ -89,7 +91,6 @@ export function analyzeTheme(source: string): ThemeAnalysis {
         );
         const first = nodes[0],
           last = nodes.at(-1);
-        const nextNode = decl.next();
         const declaration: ThemeDeclaration = {
           id: `decl-${start}`,
           ruleId: rule.id,
@@ -101,7 +102,7 @@ export function analyzeTheme(source: string): ThemeAnalysis {
           valueFrom: valueStart + (first?.sourceIndex ?? 0),
           valueTo: valueStart + (last?.sourceEndIndex ?? rawValue.length),
           line: decl.source.start.line,
-          comment: nextNode?.type === "comment" ? nextNode.text : "",
+          comment: comments.get(decl) ?? "",
         };
         rule.declarations.push(declaration);
         if (decl.prop.startsWith("--")) result.variables.push(declaration);
@@ -145,7 +146,7 @@ function assertCurrent(text: string, analysis: ThemeAnalysis) {
   if (text !== analysis.source)
     throw new Error("The source changed. Try this edit again.");
   if (!analysis.root || analysis.diagnostic)
-    throw new Error("Fix the CSS syntax error before using guided controls.");
+    throw new Error("Fix the CSS syntax error before using the visual editor.");
 }
 
 export function validateValue(property: string, value: string) {

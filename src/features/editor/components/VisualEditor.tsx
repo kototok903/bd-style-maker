@@ -50,7 +50,15 @@ import type {
   ThemeDeclaration,
 } from "@/features/theme/theme-types";
 
+export type PreviewInspection = {
+  selector: string;
+  create: boolean;
+  nonce: number;
+};
+
 type Props = {
+  inspection: PreviewInspection | null;
+  onInspectionHandled: () => void;
   analysis: ThemeAnalysis;
   original: ThemeAnalysis;
   selectedRule: string;
@@ -59,7 +67,9 @@ type Props = {
   onJump: (offset: number) => void;
 };
 
-export function GuidedEditor({
+export function VisualEditor({
+  inspection,
+  onInspectionHandled,
   analysis,
   original,
   selectedRule,
@@ -104,6 +114,17 @@ export function GuidedEditor({
   useEffect(() => {
     if (preferSelectorStyles) setSection("selectors");
   }, [selectedRule, preferSelectorStyles]);
+  useEffect(() => {
+    if (!inspection) return;
+    setSection("selectors");
+    setSearch("");
+    if (inspection.create) {
+      setName(inspection.selector);
+      setError("");
+      setAdding("selector");
+    }
+    onInspectionHandled();
+  }, [inspection, onInspectionHandled]);
   function start(kind: typeof adding) {
     setAdding(kind);
     setName(
@@ -147,14 +168,6 @@ export function GuidedEditor({
   }
   return (
     <div className="flex flex-col gap-4 px-[26px] pt-6 pb-[30px] max-[1050px]:px-5 max-[1050px]:py-[22px] max-[760px]:px-[22px] min-[1600px]:px-8 min-[1600px]:py-[30px]">
-      <div>
-        <h1 className="mb-2 text-[25px] leading-[1.25] font-semibold tracking-[-0.9px]">
-          Make it your own.
-        </h1>
-        <p className="text-[12px] leading-[1.7] text-muted-foreground">
-          Small adjustments. A whole different feeling.
-        </p>
-      </div>
       {disabled && (
         <Alert variant="destructive">
           <AlertTitle>CSS needs a quick fix</AlertTitle>
@@ -175,7 +188,7 @@ export function GuidedEditor({
         variant="outline"
         size="sm"
         className="w-full"
-        aria-label="Guided settings category"
+        aria-label="Visual settings category"
       >
         <ToggleGroupItem value="variables" className="flex-1">
           Variables{" "}
@@ -264,13 +277,29 @@ export function GuidedEditor({
       <FieldGroup>
         {filtered.map((decl) => {
           const reset = originalValue(decl);
+          const scope = analysis.rules.find((r) => r.id === decl.ruleId);
+          const location = scope
+            ? [...scope.context, scope.selector].join(" · ")
+            : "";
           return (
             <div className="min-w-0" key={decl.id}>
               <div className="mb-[5px] flex items-center justify-between gap-2.5">
-                <span className="text-[12px] font-medium">
-                  {guidedProperties.find((p) => p.property === decl.property)
-                    ?.label ?? friendlyName(decl.property)}
-                </span>
+                <div className="flex min-w-0 flex-1 items-baseline gap-2">
+                  <span className="truncate text-[12px] font-medium">
+                    {guidedProperties.find((p) => p.property === decl.property)
+                      ?.label ?? friendlyName(decl.property)}
+                  </span>
+                  <span
+                    className="min-w-0 flex-1 truncate font-mono text-[10px] text-subtle-foreground"
+                    title={`${decl.property} · ${location}`}
+                  >
+                    <code className="font-mono">{decl.property}</code>
+                    {scope && <span> · {scope.selector}</span>}
+                  </span>
+                  {decl.important && (
+                    <Badge variant="outline">!important</Badge>
+                  )}
+                </div>
                 <div className="flex items-center gap-0.5">
                   {reset !== undefined && reset !== decl.value && (
                     <Button
@@ -326,17 +355,8 @@ export function GuidedEditor({
                   )
                 }
               />
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-subtle-foreground">
-                <code className="font-mono wrap-anywhere">{decl.property}</code>
-                {allScopes && (
-                  <span>
-                    {analysis.rules.find((r) => r.id === decl.ruleId)?.selector}
-                  </span>
-                )}
-                {decl.important && <Badge variant="outline">!important</Badge>}
-              </div>
               {decl.comment && (
-                <p className="mt-[5px] text-[10px] leading-[1.65] text-muted-foreground">
+                <p className="mt-[5px] text-[10px] leading-[1.65] whitespace-pre-line text-muted-foreground">
                   {decl.comment}
                 </p>
               )}
