@@ -268,13 +268,13 @@ export function ThemePreview({
         </Alert>
       )}
       <div
-        className="relative min-h-0 flex-1 overflow-hidden bg-editor-surface"
+        className="relative min-h-0 flex-1 overflow-hidden bg-preview-checker bg-[conic-gradient(var(--preview-checker-alt)_25%,transparent_0_50%,var(--preview-checker-alt)_0_75%,transparent_0)] bg-size-[24px_24px]"
         ref={canvas}
         style={{ overflow: fit ? "hidden" : "auto" }}
       >
         {document && (
           <iframe
-            className="absolute block size-full origin-top-left border-0"
+            className="absolute block size-full origin-top-left border-0 scheme-normal"
             style={{
               width: Math.max(1280, size.width),
               height: Math.max(400, size.height / Math.max(scale, 0.1)),

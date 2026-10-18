@@ -1,6 +1,5 @@
 import {
   ArrowUpRightIcon,
-  BracesIcon,
   FileCode2Icon,
   FolderOpenIcon,
   PlusIcon,
@@ -26,19 +25,18 @@ export function OpenTheme({
   return (
     <main className="m-auto w-full max-w-[620px] overflow-y-auto px-7 py-8 max-[760px]:px-[23px]">
       <div>
-        <div className="mb-[26px] grid size-[50px] place-items-center rounded-[14px] border bg-card text-ring">
-          <BracesIcon className="size-[25px]" />
-        </div>
-        <div className="text-[9px] font-[550] tracking-[1.3px] text-subtle-foreground uppercase">
-          A workspace for your BetterDiscord themes
-        </div>
+        <img
+          src="/favicon.svg"
+          alt=""
+          className="mb-[26px] size-[50px] rounded-[14px]"
+        />
         <h1 className="mt-3.5 mb-[15px] text-[44px] leading-[1.12] font-semibold tracking-[-1.9px] max-[760px]:text-[37px]">
           Your theme.
           <br />
           <span className="text-muted-foreground">Your starting point.</span>
         </h1>
         <p className="max-w-[380px] text-[13px] leading-[1.75] text-muted-foreground">
-          Open the CSS you already love. Make it feel a little more like you.
+          Create and edit BetterDiscord themes.
         </p>
       </div>
       <button

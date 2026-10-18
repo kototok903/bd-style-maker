@@ -111,7 +111,7 @@ export function ExportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Ready for your Discord.</DialogTitle>
+          <DialogTitle>Export</DialogTitle>
           <DialogDescription>
             Export your current source as a BetterDiscord theme.
           </DialogDescription>
@@ -140,19 +140,6 @@ export function ExportDialog({
             </AlertDescription>
           </Alert>
         )}
-        <div className="flex flex-col gap-[9px] rounded-[7px] border bg-editor-surface p-[15px] text-[12px]">
-          <span className="flex items-center gap-2">
-            <span className="text-status">✓</span>Original CSS, comments, and
-            metadata
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="text-status">✓</span>
-            {analysis.imports.length} remote imports retained
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="text-status">✓</span>No editor-specific format
-          </span>
-        </div>
         <p className="text-xs leading-relaxed text-muted-foreground">
           The preview is approximate. Check the result in BetterDiscord after
           installing your theme.

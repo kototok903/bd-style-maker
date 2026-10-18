@@ -8,6 +8,7 @@
 @theme inline {
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --color-editor-surface: var(--editor-surface);
+  --color-preview-checker: var(--preview-checker);
   --color-subtle-foreground: var(--subtle-foreground);
   --color-status: var(--status);
   --color-diff-add: var(--diff-add-bg);
@@ -57,6 +58,8 @@
 }
 
 :root {
+  --preview-checker: #34363c;
+  --preview-checker-alt: #4a4d55;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

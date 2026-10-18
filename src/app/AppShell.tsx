@@ -1,5 +1,4 @@
 import {
-  BracesIcon,
   Code2Icon,
   CrosshairIcon,
   DownloadIcon,
@@ -67,6 +66,7 @@ import {
   MetadataDialog,
   PasteDialog,
 } from "@/features/editor/components/WorkspaceDialogs";
+import { useEditorScroll } from "@/features/editor/hooks/useEditorScroll";
 import { useThemeSession } from "@/features/editor/hooks/useThemeSession";
 import { createProject } from "@/features/editor/lib/editor-history";
 import { ThemePreview } from "@/features/preview/components/ThemePreview";
@@ -82,6 +82,9 @@ import {
 } from "@/features/theme-export/lib/theme-file";
 import { cn } from "@/lib/utils";
 
+type PendingNavigation =
+  { kind: "open"; project: ThemeProject } | { kind: "home" };
+
 const emptyAnalysis = analyzeTheme("");
 const SourceEditor = lazy(() =>
   import("@/features/editor/components/SourceEditor").then((module) => ({
@@ -94,6 +97,14 @@ export function AppShell() {
   const project = state.project;
   const input = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState("visual");
+  const { ref: editorScrollRef, saveScroll } = useEditorScroll(
+    mode,
+    project?.id,
+  );
+  function changeMode(next: string) {
+    saveScroll();
+    setMode(next);
+  }
   const [selectedRule, setSelectedRule] = useState("");
   const [inspection, setInspection] = useState<PreviewInspection | null>(null);
   const [jump, setJump] = useState<{ offset: number; nonce: number } | null>(
@@ -113,7 +124,7 @@ export function AppShell() {
   const dragDepth = useRef(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [pending, setPending] = useState<ThemeProject | null>(null);
+  const [pending, setPending] = useState<PendingNavigation | null>(null);
   const [lastValid, setLastValid] = useState(emptyAnalysis);
   const analysis = useMemo(
     () => analyzeTheme(project?.text ?? ""),
@@ -139,14 +150,14 @@ export function AppShell() {
   const undo = useCallback(() => dispatch({ type: "undo" }), [dispatch]);
   const redo = useCallback(() => dispatch({ type: "redo" }), [dispatch]);
   const jumpTo = (offset: number) => {
-    setMode("css");
+    changeMode("css");
     setCollapsed(false);
     setJump({ offset, nonce: Date.now() });
   };
 
-  function activate(next: ThemeProject) {
+  function activate(next: ThemeProject | null) {
     dispatch({ type: "open", project: next });
-    setMode(analyzeTheme(next.text).diagnostic ? "css" : "visual");
+    changeMode(next && analyzeTheme(next.text).diagnostic ? "css" : "visual");
     setSelectedRule("");
     setInspection(null);
     setJump(null);
@@ -156,13 +167,24 @@ export function AppShell() {
     setCompare(false);
     setCollapsed(false);
     setError("");
-    setMessage(`Opened ${next.fileName}.`);
+    setMessage(next ? `Opened ${next.fileName}.` : "Theme closed.");
+    setDialog(null);
+    setPending(null);
     setPreviewInspect(false);
   }
   function requestOpen(text: string, fileName: string) {
     const next = createProject(text, fileName);
-    if (dirty) setPending(next);
+    if (dirty) setPending({ kind: "open", project: next });
     else activate(next);
+  }
+  function requestHome() {
+    if (!project) return;
+    if (dirty || state.past.length || state.future.length)
+      setPending({ kind: "home" });
+    else activate(null);
+  }
+  function finishNavigation() {
+    if (pending) activate(pending.kind === "open" ? pending.project : null);
   }
   async function openFile(file?: File) {
     if (!file) return;
@@ -206,7 +228,7 @@ export function AppShell() {
   function selectPreview(selector: string) {
     const matching = analysis.rules.find((r) => r.selector === selector);
     setPreviewInspect(false);
-    setMode("visual");
+    changeMode("visual");
     setCollapsed(false);
     setInspection({ selector, create: !matching, nonce: Date.now() });
     if (matching) setSelectedRule(matching.id);
@@ -287,14 +309,23 @@ export function AppShell() {
           disabled={!hydrated}
         />
         <header className="flex h-12 shrink-0 items-center gap-5 border-b px-4 max-[760px]:gap-3 max-[400px]:gap-2 max-[400px]:px-3">
-          <div className="flex shrink-0 items-center gap-[11px] max-[400px]:gap-2">
-            <div className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <BracesIcon className="size-5" />
-            </div>
-            <strong className="text-[14px] font-semibold tracking-[-0.35px] max-[400px]:text-[12px]">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-1 h-auto gap-[11px] p-1 max-[400px]:gap-2"
+            aria-label="Back to themes"
+            disabled={!hydrated}
+            onClick={requestHome}
+          >
+            <img
+              src="/favicon.svg"
+              alt=""
+              className="size-7 shrink-0 rounded-lg"
+            />
+            <strong className="text-[14px] font-semibold tracking-[-0.35px] max-[460px]:sr-only">
               BD Style Maker
             </strong>
-          </div>
+          </Button>
           {project && (
             <div className="flex min-w-0 items-center gap-[9px] border-l pl-4 text-[12px] text-muted-foreground max-[760px]:hidden">
               <FileCode2Icon className="size-[15px] shrink-0" />
@@ -310,9 +341,14 @@ export function AppShell() {
           <div className="ml-auto flex items-center gap-[7px] max-[400px]:gap-1">
             {project && (
               <>
-                {tool("New theme", <PlusIcon />, () =>
-                  requestOpen(emptyTheme, "Untitled.theme.css"),
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => requestOpen(emptyTheme, "Untitled.theme.css")}
+                >
+                  <PlusIcon data-icon="inline-start" />
+                  New theme
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -328,7 +364,6 @@ export function AppShell() {
                 </Button>
               </>
             )}
-            {!project && <Badge variant="outline">Local workspace</Badge>}
           </div>
         </header>
         {error && (
@@ -482,7 +517,8 @@ export function AppShell() {
                 >
                   <Tabs
                     value={mode}
-                    onValueChange={setMode}
+                    onValueChange={changeMode}
+                    ref={editorScrollRef}
                     className="h-full gap-0"
                   >
                     <div className="px-[22px] pt-[18px] pb-1.5 max-[1050px]:px-[17px] max-[1050px]:pt-4 max-[1050px]:pb-[5px] max-[760px]:px-[22px] min-[1600px]:px-7 min-[1600px]:pt-[22px]">
@@ -518,6 +554,7 @@ export function AppShell() {
                     </TabsContent>
                     <TabsContent
                       value="css"
+                      keepMounted
                       className="flex h-full min-h-0 flex-col overflow-hidden pt-[15px]"
                     >
                       <div className="flex items-center justify-between gap-2.5 px-[21px] pb-3 font-mono text-[10px] text-muted-foreground">
@@ -664,31 +701,29 @@ export function AppShell() {
             <DialogHeader>
               <DialogTitle>Keep your current changes?</DialogTitle>
               <DialogDescription>
-                Opening another theme replaces the current local draft. Download
-                your current source first, or discard it.
+                {pending?.kind === "home"
+                  ? "Closing this theme clears its local draft and undo/redo history. Download your current source first, or discard it."
+                  : "Opening another theme replaces the current local draft. Download your current source first, or discard it."}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPending(null)}>
                 Cancel
               </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  if (pending) activate(pending);
-                  setPending(null);
-                }}
-              >
-                Discard & open
+              <Button variant="secondary" onClick={finishNavigation}>
+                {pending?.kind === "home"
+                  ? "Discard & close"
+                  : "Discard & open"}
               </Button>
               <Button
                 onClick={() => {
                   if (project) downloadTheme(project.text, project.fileName);
-                  if (pending) activate(pending);
-                  setPending(null);
+                  finishNavigation();
                 }}
               >
-                Download & open
+                {pending?.kind === "home"
+                  ? "Download & close"
+                  : "Download & open"}
               </Button>
             </DialogFooter>
           </DialogContent>

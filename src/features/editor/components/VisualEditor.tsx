@@ -1,6 +1,5 @@
 import {
   ArrowUpRightIcon,
-  CodeIcon,
   PlusIcon,
   RotateCcwIcon,
   SearchIcon,
@@ -283,14 +282,14 @@ export function VisualEditor({
             : "";
           return (
             <div className="min-w-0" key={decl.id}>
-              <div className="mb-[5px] flex items-center justify-between gap-2.5">
-                <div className="flex min-w-0 flex-1 items-baseline gap-2">
-                  <span className="truncate text-[12px] font-medium">
+              <div className="mb-[5px] flex items-start justify-between gap-2.5">
+                <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="min-w-0 text-[12px] font-medium wrap-anywhere">
                     {guidedProperties.find((p) => p.property === decl.property)
                       ?.label ?? friendlyName(decl.property)}
                   </span>
                   <span
-                    className="min-w-0 flex-1 truncate font-mono text-[10px] text-subtle-foreground"
+                    className="max-w-full min-w-0 font-mono text-[10px] wrap-anywhere text-subtle-foreground"
                     title={`${decl.property} · ${location}`}
                   >
                     <code className="font-mono">{decl.property}</code>
@@ -300,7 +299,7 @@ export function VisualEditor({
                     <Badge variant="outline">!important</Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-0.5">
+                <div className="flex shrink-0 items-center gap-0.5">
                   {reset !== undefined && reset !== decl.value && (
                     <Button
                       size="icon-xs"
@@ -357,7 +356,10 @@ export function VisualEditor({
               />
               {decl.comment && (
                 <p className="mt-[5px] text-[10px] leading-[1.65] whitespace-pre-line text-muted-foreground">
-                  {decl.comment}
+                  {decl.comment
+                    .split("\n")
+                    .map((line) => `// ${line}`)
+                    .join("\n")}
                 </p>
               )}
             </div>
@@ -408,21 +410,6 @@ export function VisualEditor({
           )}
         </Empty>
       )}
-      <div className="mt-[5px] flex items-center gap-2.5 border-t pt-5 text-muted-foreground">
-        <CodeIcon className="size-4" />
-        <p className="text-[11px] leading-[1.9]">
-          Need more freedom?
-          <br />
-          <button
-            type="button"
-            className="border-0 bg-transparent p-0 text-[11px] text-foreground"
-            onClick={() => onJump(rule?.from ?? 0)}
-          >
-            Everything is editable in CSS{" "}
-            <span className="ml-[3px] text-muted-foreground">↗</span>
-          </button>
-        </p>
-      </div>
       <Dialog
         open={adding !== null}
         onOpenChange={(open) => {
