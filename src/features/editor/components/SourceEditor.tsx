@@ -134,12 +134,18 @@ export function SourceEditor({
                 border: "none",
                 paddingRight: "7px",
               },
-              ".cm-activeLine,.cm-activeLineGutter": {
+              ".cm-activeLine": {
+                // CodeMirror draws selections underneath line backgrounds.
+                background:
+                  "color-mix(in srgb, var(--accent) 55%, transparent)",
+              },
+              ".cm-activeLineGutter": {
                 background: "var(--accent)",
               },
-              ".cm-selectionBackground,&.cm-focused .cm-selectionBackground": {
-                background: "var(--editor-selection)",
-              },
+              ".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground":
+                {
+                  background: "var(--editor-selection)",
+                },
               "&.cm-focused": { outline: "none" },
               ".cm-cursor": { borderLeftColor: "var(--foreground)" },
               ".cm-panels": {
