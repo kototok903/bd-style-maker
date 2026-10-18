@@ -323,7 +323,8 @@ export function AppShell() {
               className="size-7 shrink-0 rounded-lg"
             />
             <strong className="text-[14px] font-semibold tracking-[-0.35px] max-[460px]:sr-only">
-              BD Style Maker
+              BD S<span className="text-muted-foreground">tyle</span> M
+              <span className="text-muted-foreground">aker</span>
             </strong>
           </Button>
           {project && (
