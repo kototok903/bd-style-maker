@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InspectionHint } from "@/features/preview/components/InspectionHint";
+import { InspectorPanel } from "@/features/preview/components/InspectorPanel";
 import {
   fixtureDocument,
   loadFixture,
@@ -16,6 +18,8 @@ import {
   compileTheme,
   groupFailedStylesheets,
 } from "@/features/preview/lib/compile-theme";
+import type { InspectorSelection } from "@/features/preview/lib/inspector-types";
+import { readInspectorSelection } from "@/features/preview/lib/inspector-types";
 import type { ThemeAnalysis } from "@/features/theme/theme-types";
 
 type Props = {
@@ -72,6 +76,12 @@ export function ThemePreview({
     [retry, setRetry] = useState(0);
   const [samples, setSamples] = useState<unknown>(null);
   const [nativeStatus, setNativeStatus] = useState("loading");
+  const [selection, setSelection] = useState<InspectorSelection | null>(null);
+  const inspectActive = useRef(inspect);
+  useEffect(() => {
+    inspectActive.current = inspect;
+    if (!inspect) setSelection(null);
+  }, [inspect]);
   const [token] = useState(() => crypto.randomUUID().replaceAll("-", ""));
   useEffect(() => {
     let active = true;
@@ -99,6 +109,21 @@ export function ThemePreview({
     if (!inspect) return;
     const cancel = (event: KeyboardEvent) => {
       if (event.key === "Escape") onInspectEnd();
+      if (
+        event.altKey &&
+        ["ArrowUp", "ArrowDown"].includes(event.key) &&
+        !(
+          event.target instanceof Element &&
+          event.target.closest(
+            'input,textarea,[role="combobox"],[role="listbox"],[role="option"]',
+          )
+        )
+      ) {
+        event.preventDefault();
+        channel.current?.port1.postMessage({
+          type: event.key === "ArrowUp" ? "inspect-parent" : "inspect-child",
+        });
+      }
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
@@ -144,6 +169,7 @@ export function ThemePreview({
     channel.current?.port1.close();
     setReady(false);
     setMatched(null);
+    setSelection(null);
     const connection = new MessageChannel();
     channel.current = connection;
     connection.port1.onmessage = (event) => {
@@ -152,6 +178,10 @@ export function ThemePreview({
       const data = message as Record<string, unknown>;
       if (data.type === "ready") setReady(true);
       if (data.type === "inspect-cancelled") inspectEndCallback.current();
+      if (data.type === "inspection" && inspectActive.current) {
+        const next = readInspectorSelection(data.selection);
+        if (next) setSelection(next);
+      }
       if (
         data.type === "resources" &&
         data.revision === revision.current &&
@@ -166,13 +196,6 @@ export function ThemePreview({
       ) {
         setMatched(data.matches.length);
         setSamples(data.samples ?? null);
-      }
-      if (
-        data.type === "selected" &&
-        typeof data.selector === "string" &&
-        typeof data.name === "string"
-      ) {
-        selectedCallback.current(data.selector);
       }
     };
     connection.port1.start();
@@ -208,6 +231,23 @@ export function ThemePreview({
       data-stylesheets-loaded={loaded}
       data-native-styles-status={compiled.native ? nativeStatus : undefined}
     >
+      {inspect && selection && (
+        <InspectorPanel
+          selection={selection}
+          onNavigate={(id) =>
+            channel.current?.port1.postMessage({ type: "inspect-target", id })
+          }
+          onVariant={(id) =>
+            channel.current?.port1.postMessage({ type: "inspect-variant", id })
+          }
+          onUse={(selector) => {
+            selectedCallback.current(selector);
+            inspectEndCallback.current();
+            setSelection(null);
+          }}
+          onCancel={() => inspectEndCallback.current()}
+        />
+      )}
       {(fixtureError ||
         error ||
         (failed.length > 0 &&
@@ -291,6 +331,7 @@ export function ThemePreview({
         ref={canvas}
         style={{ overflow: fit ? "hidden" : "auto" }}
       >
+        {inspect && !selection && <InspectionHint />}
         {document && (
           <iframe
             className="absolute block size-full origin-top-left border-0 scheme-normal"
@@ -314,17 +355,6 @@ export function ThemePreview({
           </div>
         )}
       </div>
-      {inspect && (
-        <div
-          className="absolute top-2 left-2 flex max-w-[calc(100%-1rem)] items-center gap-3 rounded-lg border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
-          role="status"
-        >
-          Click an outlined area to edit its CSS.
-          <Button size="xs" variant="ghost" onClick={onInspectEnd}>
-            Cancel (Esc)
-          </Button>
-        </div>
-      )}
       {stale && !inspect && (
         <Badge
           variant="outline"

@@ -33,6 +33,7 @@ Additional functionality:
 - Leading metadata editor, undo/redo, undoable reset, original/current preview comparison, and a source diff.
 - IndexedDB draft autosave/recovery. Opening another theme with unexported changes offers download, discard, or cancel. Browser draft storage is separate from exporting a theme file.
 - Sandboxed, bundled Discord DOM/base CSS snapshot with dark/light appearance, element selection, fit/100% zoom, and a count of local selectors matching the mounted document. Imported theme CSS cannot access or style the editor document.
+- Element inspection covers bars, channels/categories, members/groups, server folders, messages, composer/account controls, tooltips and inner parts. Click to pin, navigate the hierarchy or choose a state, check the selector's match count, then use the selector to edit/create a local rule. Alt+Up/Down moves through the hierarchy; Escape cancels. Sample message content includes replies, mentions, quotes, code, spoilers and reactions.
 - Automatic loading of direct/nested theme CSS imports with caching, URL rebasing, preserved layer/supports/media conditions, and visible failure reporting. A resource toggle can pause requests. An optional HTTPS source URL resolves relative paths; import inspection remains read-only. Original import URLs and conditions stay unchanged in export.
 - Download a `.theme.css` or copy the current CSS. Incomplete metadata or malformed CSS does not prevent downloading source to keep your work.
 - Resizable desktop panes and a stacked mobile workspace.

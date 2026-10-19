@@ -467,7 +467,7 @@ export function AppShell() {
                   () => setPreviewInspect(!previewInspect),
                   false,
                   previewInspect,
-                  "Inspect: hover over the preview, then click an outlined area to edit its CSS. Esc cancels.",
+                  "Inspect: click a preview component, choose its part or state, then use its selector. Esc cancels.",
                 )}
                 {tool(
                   previewFit ? "Preview at 100%" : "Fit preview to pane",

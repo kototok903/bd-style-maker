@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/select";
 
 type Props = {
+  id?: string;
   label: string;
   value: string;
   options: { label: string; value: string }[];
@@ -15,6 +16,7 @@ type Props = {
   disabled?: boolean;
 };
 export function ChoiceSelect({
+  id,
   label,
   value,
   options,
@@ -30,7 +32,7 @@ export function ChoiceSelect({
       }}
       disabled={disabled}
     >
-      <SelectTrigger className="w-full min-w-0" aria-label={label}>
+      <SelectTrigger id={id} className="w-full min-w-0" aria-label={label}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent alignItemWithTrigger={false}>

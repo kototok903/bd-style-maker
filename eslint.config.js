@@ -12,9 +12,17 @@ export default defineConfig([
     files: [
       "scripts/capture-discord.js",
       "src/features/preview/fixture/bootstrap.js",
+      "src/features/preview/fixture/inspector.js",
+      "src/features/preview/fixture/sample-content.js",
     ],
     extends: [js.configs.recommended],
-    languageOptions: { globals: globals.browser },
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        createInspector: "readonly",
+        addPreviewSamples: "readonly",
+      },
+    },
   },
   {
     files: ["**/*.{ts,tsx}"],
