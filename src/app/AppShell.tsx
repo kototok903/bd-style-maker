@@ -322,7 +322,7 @@ export function AppShell() {
               alt=""
               className="size-7 shrink-0 rounded-lg"
             />
-            <strong className="text-[14px] font-semibold tracking-[-0.35px] max-[460px]:sr-only">
+            <strong className="text-[14px] font-semibold tracking-[-0.35px] max-[400px]:text-[12px]">
               BD S<span className="text-muted-foreground">tyle</span> M
               <span className="text-muted-foreground">aker</span>
             </strong>
@@ -345,10 +345,11 @@ export function AppShell() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="New theme"
                   onClick={() => requestOpen(emptyTheme, "Untitled.theme.css")}
                 >
                   <PlusIcon data-icon="inline-start" />
-                  New theme
+                  <span className="max-[760px]:hidden">New theme</span>
                 </Button>
                 <Button
                   variant="ghost"

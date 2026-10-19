@@ -290,10 +290,14 @@ export function VisualEditor({
                   </span>
                   <span
                     className="max-w-full min-w-0 font-mono text-[10px] wrap-anywhere text-subtle-foreground"
-                    title={`${decl.property} · ${location}`}
+                    title={
+                      location
+                        ? `${location} · ${decl.property}`
+                        : decl.property
+                    }
                   >
+                    {scope && <span>{scope.selector} · </span>}
                     <code className="font-mono">{decl.property}</code>
-                    {scope && <span> · {scope.selector}</span>}
                   </span>
                   {decl.important && (
                     <Badge variant="outline">!important</Badge>

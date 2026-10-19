@@ -12,6 +12,33 @@ import { analyzeTheme } from "@/features/theme/lib/theme-source";
 
 afterEach(cleanup);
 
+it("shows shared headings before inline notes with a comment prefix on each line", () => {
+  const analysis = analyzeTheme(`:root {
+    /* WARNING HSL AND TEXT COLOR SETTINGS */
+    --warning-hue: 40;
+    --warning-text-color: #ffffff; /* DOES NOTHING WITH MATERIAL YOU ENABLED */
+  }`);
+  render(
+    <VisualEditor
+      analysis={analysis}
+      original={analysis}
+      selectedRule="all-variables"
+      onSelectRule={vi.fn()}
+      onEdit={vi.fn()}
+      onJump={vi.fn()}
+      inspection={null}
+      onInspectionHandled={vi.fn()}
+    />,
+  );
+  expect(
+    screen.getByText(
+      "// WARNING HSL AND TEXT COLOR SETTINGS // DOES NOTHING WITH MATERIAL YOU ENABLED",
+    ),
+  ).toHaveTextContent(
+    "// WARNING HSL AND TEXT COLOR SETTINGS // DOES NOTHING WITH MATERIAL YOU ENABLED",
+  );
+});
+
 it("prefills an inspected selector and waits for confirmation before changing CSS", async () => {
   const analysis = analyzeTheme(":root { --accent: #a7b7ff; }");
   const onEdit = vi.fn(),

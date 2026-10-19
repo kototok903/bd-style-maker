@@ -140,12 +140,13 @@ describe("field descriptions from CSS comments", () => {
       "--app-font-width": "APP FONT SETTINGS",
       "--app-font-roundness": "APP FONT SETTINGS",
       "--accent-hue": "ACCENT HSL AND TEXT COLOR SETTINGS",
-      "--accent-text-color": "DOES NOTHING WITH MATERIAL YOU ENABLED",
+      "--accent-text-color":
+        "ACCENT HSL AND TEXT COLOR SETTINGS\nDOES NOTHING WITH MATERIAL YOU ENABLED",
       "--accent-button-action": "ACCENT HSL AND TEXT COLOR SETTINGS",
     });
   });
 
-  it("prefers system24 inline descriptions without passing them to the next field", () => {
+  it("combines system24 headings and inline descriptions without passing inline notes to the next field", () => {
     expect(
       comments(`body {
       /* sizes */
@@ -154,8 +155,8 @@ describe("field descriptions from CSS comments", () => {
       --default-size: 16px;
     }`),
     ).toEqual({
-      "--gap": "spacing between panels",
-      "--divider-thickness": "thickness of the unread divider",
+      "--gap": "sizes\nspacing between panels",
+      "--divider-thickness": "sizes\nthickness of the unread divider",
       "--default-size": "sizes",
     });
     expect(comments(":root { --a: 1; /* only a */ --b: 2; }")).toEqual({
@@ -204,6 +205,27 @@ describe("field descriptions from CSS comments", () => {
     expect(comments(source)).toEqual({
       "--transparency": description,
       "--blur": description,
+    });
+  });
+
+  it("keeps all group and inline comments in source order without leaking them across groups", () => {
+    const source = `:root {
+      /* WARNING HSL AND TEXT COLOR SETTINGS */
+      /* Shared guidance */
+      --warning-hue: 40;
+      --warning-text-color: white; /* DOES NOTHING WITH MATERIAL YOU ENABLED */ /* Additional note */
+      --warning-button-action: white;
+
+      /* MESSAGE SETTINGS */
+      --message-radius: 18px;
+    }`.replaceAll("\n", "\r\n");
+    expect(comments(source)).toEqual({
+      "--warning-hue": "WARNING HSL AND TEXT COLOR SETTINGS\nShared guidance",
+      "--warning-text-color":
+        "WARNING HSL AND TEXT COLOR SETTINGS\nShared guidance\nDOES NOTHING WITH MATERIAL YOU ENABLED\nAdditional note",
+      "--warning-button-action":
+        "WARNING HSL AND TEXT COLOR SETTINGS\nShared guidance",
+      "--message-radius": "MESSAGE SETTINGS",
     });
   });
 

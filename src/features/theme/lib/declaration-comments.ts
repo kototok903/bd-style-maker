@@ -56,9 +56,9 @@ export function declarationComments(rule: Rule): Map<Declaration, string> {
       if (text) inline.push(text);
       line = next.source?.end?.line;
     }
-    // An inline note overrides a heading for this field only; following fields
-    // can still inherit the heading until the visual group ends.
-    result.set(node, inline.length ? inline.join("\n") : group);
+    // Shared headings precede this field's inline notes in source order.
+    // Following fields inherit only the heading until the visual group ends.
+    result.set(node, [group, ...inline].filter(Boolean).join("\n"));
   }
   return result;
 }
