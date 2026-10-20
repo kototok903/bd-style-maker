@@ -50,6 +50,11 @@ export function addPreviewSamples() {
     reply.className = "repliedMessage_c19a55";
     reply.innerHTML =
       '<span class="username_c19a55">Jamie</span><div class="repliedTextPreview_c19a55"><span class="repliedTextContent_c19a55">Try changing a color or the corner radius.</span></div>';
+    const jamie = [
+      ...document.querySelectorAll(".member_c8ffbb .username__703b9"),
+    ].find((name) => name.textContent === "Jamie");
+    if (jamie)
+      reply.querySelector(".username_c19a55").style.color = jamie.style.color;
     message.prepend(reply);
     const reactions = document.createElement("div");
     reactions.className = "reactions__23977";

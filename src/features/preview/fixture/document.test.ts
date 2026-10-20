@@ -101,6 +101,129 @@ describe("bundled Discord preview", () => {
     expect(snapshot).toContain("data:image/jpeg;base64,");
   });
 
+  it("has unique members, accurate groups and an online activity example", () => {
+    const document = new DOMParser().parseFromString(
+      snapshot.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ""),
+      "text/html",
+    );
+    const members = document.querySelector(".members_c8ffbb")!;
+    const rows = [...members.querySelectorAll(".member_c8ffbb")];
+    const names = rows.map(
+      (row) => row.querySelector(".username__703b9")!.textContent,
+    );
+    expect(names).toEqual([
+      "Élodie Noël",
+      "Анастасія",
+      "林晓雨",
+      "Alice",
+      "Jamie",
+      "ليلى",
+      "अनन्या",
+      "Studio Bot",
+      "Morgan",
+    ]);
+    expect(new Set(names).size).toBe(rows.length);
+    const groups = [...members.querySelectorAll(".membersGroup_c8ffbb")];
+    expect(groups).toHaveLength(4);
+    expect(groups[0].textContent).toBe("Activity");
+    for (const [index, label, offline, count] of [
+      [1, "Designers", false, 3],
+      [2, "Online", false, 5],
+      [3, "Offline", true, 1],
+    ] as const) {
+      const heading = groups[index];
+      expect(
+        heading.querySelector(".membersGroupName_c8ffbb")!.textContent,
+      ).toBe(label);
+      expect(
+        heading.querySelector(".membersGroupName_c8ffbb")!.nextElementSibling!
+          .textContent,
+      ).toBe(`— ${count}`);
+      const groupedRows = [];
+      let row = heading.nextElementSibling;
+      while (row?.matches(".member_c8ffbb")) {
+        groupedRows.push(row);
+        expect(row.classList.contains("offline__5d473")).toBe(offline);
+        row = row.nextElementSibling;
+      }
+      expect(groupedRows).toHaveLength(count);
+    }
+    const activity = members.querySelector(".container__0f2e8")!;
+    expect(activity.querySelector(".username__703b9")!.textContent).toBe(
+      "Jamie",
+    );
+    const jamieAvatar = rows
+      .find(
+        (row) => row.querySelector(".username__703b9")!.textContent === "Jamie",
+      )!
+      .querySelector("img.avatar__44b0c")!
+      .getAttribute("src");
+    expect(
+      activity.querySelector("img.avatar__44b0c")!.getAttribute("src"),
+    ).toBe(jamieAvatar);
+    expect(rows.at(-1)!.querySelector(".pointerEvents__44b0c")).toBeNull();
+    expect(
+      rows
+        .map((row) => {
+          const name = row.querySelector<HTMLElement>(".username__703b9")!;
+          return [name.lang, name.dir];
+        })
+        .filter(([lang]) => lang),
+    ).toEqual([
+      ["fr", "auto"],
+      ["uk", "auto"],
+      ["zh", "auto"],
+      ["ar", "auto"],
+      ["hi", "auto"],
+    ]);
+  });
+
+  it("keeps identities and role colors consistent, with badges only on the bot", () => {
+    const document = new DOMParser().parseFromString(
+      snapshot.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ""),
+      "text/html",
+    );
+    const identities = new Map(
+      [...document.querySelectorAll(".member_c8ffbb")].map((row) => {
+        const name = row.querySelector<HTMLElement>(".username__703b9")!;
+        const bot = name.textContent === "Studio Bot";
+        expect(Boolean(row.querySelector(".botTag__82f07"))).toBe(bot);
+        return [
+          name.textContent,
+          {
+            color: name.style.color,
+            avatar: row.querySelector("img.avatar__44b0c")!.getAttribute("src"),
+          },
+        ];
+      }),
+    );
+    let botMessages = 0;
+    for (const message of document.querySelectorAll(".message__5126c")) {
+      const name = message.querySelector<HTMLElement>(".username_c19a55");
+      if (!name) continue;
+      const identity = identities.get(name.textContent)!;
+      expect(identity).toBeDefined();
+      expect(name.style.color).toBe(identity.color);
+      expect(
+        message.querySelector("img.avatar_c19a55")!.getAttribute("src"),
+      ).toBe(identity.avatar);
+      const bot = name.textContent === "Studio Bot";
+      expect(Boolean(message.querySelector(".botTag_c19a55"))).toBe(bot);
+      expect(message.querySelector(".clanTagChiplet_c19a55")).toBeNull();
+      if (bot) botMessages++;
+    }
+    expect(botMessages).toBe(3);
+    for (const name of document.querySelectorAll<HTMLElement>(
+      ".voiceUser__07f91 .username__07f91,.container__0f2e8 .username__703b9,.panels__5e434 .title_b6c092",
+    )) {
+      expect(name.style.color).toBe(identities.get(name.textContent)!.color);
+    }
+    expect(
+      document.querySelector(".voiceUser__07f91 .clanTag__07f91"),
+    ).toBeNull();
+    expect(document.body.textContent).not.toContain("Avery");
+  });
+
   it("shows a selected server pill and a tooltip using native Discord classes", () => {
     const body = readFileSync(
       "src/features/preview/fixture/discord-body.html",

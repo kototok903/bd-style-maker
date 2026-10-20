@@ -39,7 +39,10 @@
     "position:fixed;pointer-events:none;z-index:2147483647;box-sizing:border-box;width:max-content;padding:3px 6px;border-radius:3px;background:#a7b7ff;color:#17181b;white-space:normal;overflow-wrap:anywhere;font:12px system-ui,sans-serif";
   document.body.append(outline, label);
   addPreviewSamples();
-  const inspector = createInspector((message) => port?.postMessage(message));
+  const inspector = createInspector(
+    (message) => port?.postMessage(message),
+    inspectorTargetGroups,
+  );
   function highlight(target) {
     outline.hidden = label.hidden = !target;
     if (!target) return;

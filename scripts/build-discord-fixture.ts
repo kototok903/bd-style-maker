@@ -13,12 +13,16 @@ let body = (await Bun.file(`${directory}/discord-body.html`).text()).replaceAll(
   "/preview-artwork.svg",
   artwork,
 );
-for (const name of ["forest", "mountain", "coast"]) {
-  const image = await Bun.file(
-    `public/preview-server-${name}.jpg`,
-  ).arrayBuffer();
+for (const name of [
+  "server-forest",
+  "server-mountain",
+  "server-coast",
+  "member-jamie",
+  "member-alice",
+]) {
+  const image = await Bun.file(`public/preview-${name}.jpg`).arrayBuffer();
   body = body.replaceAll(
-    `/preview-server-${name}.jpg`,
+    `/preview-${name}.jpg`,
     `data:image/jpeg;base64,${Buffer.from(image).toString("base64")}`,
   );
 }

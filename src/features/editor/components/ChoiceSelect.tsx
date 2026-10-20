@@ -3,15 +3,18 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 
+type Option = { label: string; value: string };
 type Props = {
   id?: string;
   label: string;
   value: string;
-  options: { label: string; value: string }[];
+  options?: Option[];
+  groups?: { label: string; options: Option[] }[];
   onChange: (value: string) => void;
   disabled?: boolean;
 };
@@ -19,14 +22,16 @@ export function ChoiceSelect({
   id,
   label,
   value,
-  options,
+  options = [],
+  groups,
   onChange,
   disabled,
 }: Props) {
+  const items = groups ? groups.flatMap((group) => group.options) : options;
   return (
     <Select
       value={value}
-      items={options}
+      items={items}
       onValueChange={(next) => {
         if (next !== null) onChange(next);
       }}
@@ -36,13 +41,16 @@ export function ChoiceSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent alignItemWithTrigger={false}>
-        <SelectGroup>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectGroup>
+        {(groups ?? [{ label: "", options }]).map((group) => (
+          <SelectGroup key={group.label}>
+            {group.label && <SelectLabel>{group.label}</SelectLabel>}
+            {group.options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
       </SelectContent>
     </Select>
   );

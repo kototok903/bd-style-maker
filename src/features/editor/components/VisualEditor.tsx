@@ -35,7 +35,10 @@ import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChoiceSelect } from "@/features/editor/components/ChoiceSelect";
 import { ValueEditor } from "@/features/editor/components/ValueEditor";
-import { selectorPresets } from "@/features/theme/lib/starter-theme";
+import {
+  selectorPresetGroups,
+  selectorPresets,
+} from "@/features/theme/lib/selector-presets";
 import {
   addDeclaration,
   addRule,
@@ -462,12 +465,20 @@ export function VisualEditor({
                         selectorPresets.find((p) => p.selector === name)
                           ?.selector ?? "custom"
                       }
-                      options={[
-                        ...selectorPresets.map((p) => ({
-                          label: p.label,
-                          value: p.selector,
+                      groups={[
+                        ...selectorPresetGroups.map((group) => ({
+                          label: group.label,
+                          options: group.targets.map(([selector, label]) => ({
+                            label,
+                            value: selector,
+                          })),
                         })),
-                        { label: "Custom selector", value: "custom" },
+                        {
+                          label: "Custom",
+                          options: [
+                            { label: "Custom selector", value: "custom" },
+                          ],
+                        },
                       ]}
                       onChange={(next) =>
                         setName(next === "custom" ? "" : next)

@@ -20,6 +20,7 @@ export default defineConfig([
       globals: {
         ...globals.browser,
         createInspector: "readonly",
+        inspectorTargetGroups: "readonly",
         addPreviewSamples: "readonly",
       },
     },

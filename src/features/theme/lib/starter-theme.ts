@@ -42,13 +42,3 @@ export const emptyTheme = `/**
 :root {
 }
 `;
-
-export const selectorPresets = [
-  { label: "Global variables", selector: ":root" },
-  { label: "Dark appearance", selector: ".theme-dark" },
-  { label: "Light appearance", selector: ".theme-light" },
-  { label: "Messages", selector: '[class*="message_"]' },
-  { label: "Message input", selector: '[class*="channelTextArea_"]' },
-  { label: "Embeds", selector: '[class*="embedFull_"]' },
-  { label: "Channel list", selector: '[class*="sidebar_"]' },
-];

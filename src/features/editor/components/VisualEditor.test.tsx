@@ -94,3 +94,55 @@ it("opens selector properties for an existing inspected rule without changing th
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(onEdit).not.toHaveBeenCalled();
 });
+
+it("offers grouped inspector targets and keeps custom selectors editable", async () => {
+  const analysis = analyzeTheme(":root { --accent: #a7b7ff; }");
+  const onEdit = vi.fn();
+  render(
+    <VisualEditor
+      analysis={analysis}
+      original={analysis}
+      selectedRule="all-variables"
+      onSelectRule={vi.fn()}
+      onEdit={onEdit}
+      onJump={vi.fn()}
+      inspection={{ selector: ".member_c8ffbb", create: true, nonce: 3 }}
+      onInspectionHandled={vi.fn()}
+    />,
+  );
+  const preset = await screen.findByRole("combobox", {
+    name: "Common selector",
+  });
+  expect(preset).toHaveTextContent("Member row");
+  fireEvent.click(preset);
+  const folders = screen.getByRole("group", { name: "Server folders" });
+  const folder = within(folders).getByRole("option", { name: "Folder button" });
+  expect(
+    screen.getByRole("option", { name: "Top title bar" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("option", { name: "Member group heading" }),
+  ).toBeInTheDocument();
+  fireEvent.pointerDown(folder);
+  fireEvent.click(folder);
+  expect(screen.getByLabelText("CSS selector")).toHaveValue(
+    ".folderButton__48112",
+  );
+  expect(onEdit).not.toHaveBeenCalled();
+
+  fireEvent.click(preset);
+  const custom = screen.getByRole("option", { name: "Custom selector" });
+  fireEvent.pointerDown(custom);
+  fireEvent.click(custom);
+  fireEvent.change(screen.getByLabelText("CSS selector"), {
+    target: { value: ".my-custom-selector:hover" },
+  });
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Add selector",
+    }),
+  );
+  expect(onEdit).toHaveBeenCalledWith(
+    expect.stringContaining(".my-custom-selector:hover {"),
+  );
+});

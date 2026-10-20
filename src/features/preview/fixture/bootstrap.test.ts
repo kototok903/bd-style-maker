@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
 
 import type { InspectorSelection } from "@/features/preview/lib/inspector-types";
+import { inspectorTargetGroups } from "@/features/theme/lib/selector-presets";
 
 const bootstrap = readFileSync(
   "src/features/preview/fixture/bootstrap.js",
@@ -72,7 +73,10 @@ function fixture(html?: string) {
     start: vi.fn(),
     onmessage: null as ((event: { data: unknown }) => void) | null,
   };
-  new Function(`${samples}\n${inspector}\n${bootstrap}`)();
+  new Function(
+    "inspectorTargetGroups",
+    `${samples}\n${inspector}\n${bootstrap}`,
+  )(inspectorTargetGroups);
   windowEvents.get("message")!(
     new MessageEvent("message", {
       source: window.parent,
