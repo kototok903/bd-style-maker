@@ -593,12 +593,6 @@ export function AppShell() {
                           {analysis.diagnostic.message}
                         </div>
                       )}
-                      <div className="flex justify-between gap-2 px-5 py-2.5 text-[9px] text-subtle-foreground">
-                        Full source access{" "}
-                        <span className="max-[760px]:hidden">
-                          Find ⌘/Ctrl F · Indent Tab
-                        </span>
-                      </div>
                     </TabsContent>
                   </Tabs>
                 </ResizablePanel>

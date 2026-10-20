@@ -127,8 +127,8 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-  --editor-surface: #141518;
-  --editor-selection: #293654;
+  --editor-surface: #24252b;
+  --editor-selection: #354362;
   --subtle-foreground: #818492;
   --status: #9bc4a5;
   --diff-add-bg: #17372b;

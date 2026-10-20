@@ -2,10 +2,8 @@ import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { css } from "@codemirror/lang-css";
 import {
   bracketMatching,
-  defaultHighlightStyle,
   foldGutter,
   indentOnInput,
-  syntaxHighlighting,
 } from "@codemirror/language";
 import { setDiagnostics } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
@@ -20,6 +18,7 @@ import {
 } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 
+import { graphiteTheme } from "@/features/editor/lib/graphite-theme";
 import type { ThemeDiagnostic } from "@/features/theme/theme-types";
 
 type Props = {
@@ -68,7 +67,7 @@ export function SourceEditor({
           indentOnInput(),
           bracketMatching(),
           highlightSelectionMatches(),
-          syntaxHighlighting(defaultHighlightStyle),
+          graphiteTheme,
           EditorView.contentAttributes.of({
             "aria-label": "Theme CSS source",
             spellcheck: "false",
@@ -111,54 +110,6 @@ export function SourceEditor({
             )
               callbacks.current.onChange(update.state.sliceDoc());
           }),
-          EditorView.theme(
-            {
-              "&": {
-                height: "100%",
-                fontSize: "12px",
-                backgroundColor: "var(--editor-surface)",
-                color: "var(--foreground)",
-              },
-              ".cm-scroller": {
-                overflow: "auto",
-                fontFamily: "var(--font-mono)",
-                lineHeight: "1.85",
-              },
-              ".cm-content": {
-                padding: "16px 0",
-                caretColor: "var(--foreground)",
-              },
-              ".cm-gutters": {
-                background: "var(--editor-surface)",
-                color: "var(--muted-foreground)",
-                border: "none",
-                paddingRight: "7px",
-              },
-              ".cm-activeLine": {
-                // CodeMirror draws selections underneath line backgrounds.
-                background:
-                  "color-mix(in srgb, var(--accent) 55%, transparent)",
-              },
-              ".cm-activeLineGutter": {
-                background: "var(--accent)",
-              },
-              ".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground":
-                {
-                  background: "var(--editor-selection)",
-                },
-              "&.cm-focused": { outline: "none" },
-              ".cm-cursor": { borderLeftColor: "var(--foreground)" },
-              ".cm-panels": {
-                background: "var(--card)",
-                color: "var(--foreground)",
-              },
-              ".cm-search input": {
-                background: "var(--background)",
-                color: "var(--foreground)",
-              },
-            },
-            { dark: true },
-          ),
         ],
       }),
     });
