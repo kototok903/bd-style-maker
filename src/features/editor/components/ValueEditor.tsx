@@ -1,35 +1,54 @@
+import { PipetteIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  ColorPicker,
+  ColorPickerAlpha,
+  ColorPickerEyeDropper,
+  ColorPickerFormat,
+  ColorPickerHue,
+  ColorPickerOpacity,
+  ColorPickerOutput,
+  ColorPickerSelection,
+} from "@/components/ui/color-picker";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ChoiceSelect } from "@/features/editor/components/ChoiceSelect";
-import { colorPickerValue } from "@/features/editor/lib/color-value";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  colorPickerValue,
+  pickedColorValue,
+} from "@/features/editor/lib/color-value";
 
 type Props = {
   value: string;
   label: string;
-  variables: string[];
+  placeholder?: string;
+  colorProperty?: boolean;
   onCommit: (value: string) => void;
   disabled?: boolean;
-  allowBinding?: boolean;
+  onDraftChange?: (value: string) => void;
 };
-
 export function ValueEditor({
   value,
   label,
-  variables,
+  placeholder,
+  colorProperty = false,
   onCommit,
   disabled,
-  allowBinding = true,
+  onDraftChange,
 }: Props) {
   const id = useId();
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState("");
-  const [binding, setBinding] = useState(/^var\(/.test(value));
   useEffect(() => {
     setDraft(value);
     setError("");
-    setBinding(/^var\(/.test(value));
   }, [value]);
   function commit(next: string) {
     try {
@@ -40,35 +59,93 @@ export function ValueEditor({
     }
   }
   const color = useMemo(() => colorPickerValue(draft), [draft]);
+  const pickerColor = color
+    ? color.hex + color.alpha
+    : colorProperty
+      ? "#a7b7ff"
+      : null;
   return (
     <Field data-invalid={!!error} data-disabled={disabled}>
       <FieldLabel htmlFor={id} className="sr-only">
         {label}
       </FieldLabel>
       <div className="flex items-center gap-2">
-        {color && !binding && (
-          <input
-            type="color"
-            value={color.hex}
-            aria-label={`${label} color picker`}
-            disabled={disabled}
-            onChange={(event) => {
-              const next =
-                event.target.value + (color.alpha === "ff" ? "" : color.alpha);
-              setDraft(next);
-              commit(next);
-            }}
-            className="size-[30px] shrink-0 cursor-pointer rounded-[7px] border border-input bg-editor-surface p-[3px] [&::-webkit-color-swatch]:rounded-[3px] [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0"
-          />
+        {pickerColor && (
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label={`${label} color picker`}
+                  disabled={disabled}
+                  className="shrink-0 p-1"
+                />
+              }
+            >
+              {color ? (
+                <span
+                  className="size-full rounded-sm"
+                  style={{
+                    background:
+                      "repeating-conic-gradient(var(--preview-checker) 0 25%,var(--preview-checker-alt) 0 50%) 0/8px 8px",
+                  }}
+                >
+                  <span
+                    className="block size-full rounded-sm"
+                    style={{ backgroundColor: color.hex + color.alpha }}
+                  />
+                </span>
+              ) : (
+                <PipetteIcon />
+              )}
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className="max-w-[calc(100vw-24px)] p-4"
+            >
+              <PopoverTitle>{label}</PopoverTitle>
+              <ColorPicker
+                value={pickerColor}
+                onChange={(rgba) => {
+                  const next = pickedColorValue(draft, rgba);
+                  const same = colorPickerValue(next);
+                  if (
+                    color &&
+                    same?.hex.toLowerCase() === color.hex.toLowerCase() &&
+                    same?.alpha.toLowerCase() === color.alpha.toLowerCase()
+                  )
+                    return;
+                  setDraft(next);
+                  commit(next);
+                }}
+              >
+                <ColorPickerSelection aria-label="Color saturation and brightness" />
+                <ColorPickerHue aria-label="Color hue" />
+                <ColorPickerOpacity />
+                <ColorPickerAlpha aria-label="Color opacity" />
+                <div className="flex items-center gap-2">
+                  <ColorPickerEyeDropper />
+                  <ColorPickerOutput />
+                </div>
+                <ColorPickerFormat />
+              </ColorPicker>
+            </PopoverContent>
+          </Popover>
         )}
         <Input
           id={id}
           value={draft}
+          placeholder={placeholder}
           aria-label={`${label} CSS value`}
           aria-invalid={!!error}
           disabled={disabled}
           spellCheck={false}
-          onChange={(event) => setDraft(event.target.value)}
+          className="min-w-0 flex-1"
+          onChange={(event) => {
+            setDraft(event.target.value);
+            onDraftChange?.(event.target.value);
+          }}
           onBlur={() => {
             if (draft !== value) commit(draft);
           }}
@@ -82,43 +159,8 @@ export function ValueEditor({
               setError("");
             }
           }}
-          className="min-w-0 flex-1"
         />
       </div>
-      {allowBinding && (
-        <div className="flex min-w-0 items-center gap-1.5 [&>button]:min-w-0 [&>button]:flex-1">
-          <ChoiceSelect
-            label={`${label} value type`}
-            value={binding ? "variable" : "literal"}
-            options={[
-              { label: "Direct value", value: "literal" },
-              { label: "CSS variable", value: "variable" },
-            ]}
-            disabled={disabled}
-            onChange={(mode) => {
-              setBinding(mode === "variable");
-            }}
-          />
-          {binding && (
-            <ChoiceSelect
-              label={`${label} variable`}
-              value={variables.find((v) => draft === `var(${v})`) ?? "custom"}
-              options={[
-                { label: "Custom expression", value: "custom" },
-                ...variables.map((v) => ({ label: v, value: v })),
-              ]}
-              disabled={disabled}
-              onChange={(variable) => {
-                if (variable !== "custom") {
-                  const next = `var(${variable})`;
-                  setDraft(next);
-                  commit(next);
-                }
-              }}
-            />
-          )}
-        </div>
-      )}
       {error && <FieldError>{error}</FieldError>}
     </Field>
   );

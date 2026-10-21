@@ -11,6 +11,8 @@ export type ThemeDeclaration = SourceRange & {
   valueTo: number;
   line: number;
   comment: string;
+  note?: string;
+  group?: { key: string; title: string; note: string };
 };
 export type ThemeRule = SourceRange & {
   id: string;
@@ -18,6 +20,7 @@ export type ThemeRule = SourceRange & {
   context: string[];
   line: number;
   declarations: ThemeDeclaration[];
+  parentRuleId?: string;
 };
 export type ThemeImport = {
   id: string;

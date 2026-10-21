@@ -551,6 +551,7 @@ export function AppShell() {
                           onSelectRule={setSelectedRule}
                           onEdit={edit}
                           onJump={jumpTo}
+                          onInspect={() => setPreviewInspect(true)}
                         />
                       </ScrollArea>
                     </TabsContent>

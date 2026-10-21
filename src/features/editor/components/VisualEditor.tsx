@@ -1,12 +1,19 @@
 import {
   ArrowUpRightIcon,
+  CrosshairIcon,
+  EllipsisIcon,
   PlusIcon,
-  RotateCcwIcon,
   SearchIcon,
-  Trash2Icon,
+  XIcon,
 } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,33 +38,46 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChoiceSelect } from "@/features/editor/components/ChoiceSelect";
+import { DeclarationField } from "@/features/editor/components/DeclarationField";
 import { ValueEditor } from "@/features/editor/components/ValueEditor";
+import { isColorProperty } from "@/features/editor/lib/color-value";
+import type { StyleRule } from "@/features/editor/lib/editor-model";
 import {
-  selectorPresetGroups,
-  selectorPresets,
-} from "@/features/theme/lib/selector-presets";
+  declarationKey,
+  elementName,
+  previewElements,
+  ruleKey,
+  ruleLocation,
+  rulesForElement,
+  settingGroups,
+  settingsDeclarations,
+  styleRules,
+} from "@/features/editor/lib/editor-model";
 import {
   addDeclaration,
   addRule,
-  editDeclaration,
-  friendlyName,
+  analyzeTheme,
   guidedProperties,
-  removeDeclaration,
 } from "@/features/theme/lib/theme-source";
 import type {
   ThemeAnalysis,
   ThemeDeclaration,
 } from "@/features/theme/theme-types";
+import { cn } from "@/lib/utils";
 
 export type PreviewInspection = {
   selector: string;
   create: boolean;
   nonce: number;
 };
-
 type Props = {
   inspection: PreviewInspection | null;
   onInspectionHandled: () => void;
@@ -67,8 +87,8 @@ type Props = {
   onSelectRule: (id: string) => void;
   onEdit: (text: string, group?: string) => void;
   onJump: (offset: number) => void;
+  onInspect?: () => void;
 };
-
 export function VisualEditor({
   inspection,
   onInspectionHandled,
@@ -78,106 +98,327 @@ export function VisualEditor({
   onSelectRule,
   onEdit,
   onJump,
+  onInspect,
 }: Props) {
-  const [section, setSection] = useState("variables");
-  const [search, setSearch] = useState("");
-  const [adding, setAdding] = useState<
-    "variable" | "property" | "selector" | null
-  >(null);
-  const [name, setName] = useState("");
+  const id = useId();
+  const initialRule = analysis.rules.find((rule) => rule.id === selectedRule);
+  const [section, setSection] = useState(
+    initialRule?.declarations.some((d) => !d.property.startsWith("--"))
+      ? "elements"
+      : "settings",
+  );
+  const [searches, setSearches] = useState({ settings: "", elements: "" });
+  const [locations, setLocations] = useState({
+    settings: "all",
+    elements: "all",
+  });
+  const [showCode, setShowCode] = useState(false);
+  const [element, setElement] = useState(
+    initialRule ? `selector:${initialRule.selector}` : "all",
+  );
+  const groups = useMemo(() => settingGroups(analysis), [analysis]);
+  const records = useMemo(() => styleRules(analysis), [analysis]);
+  const [openSettings, setOpenSettings] = useState<string[]>(() =>
+    groups.slice(0, 1).map((group) => group.key),
+  );
+  const [openRules, setOpenRules] = useState<string[]>(() =>
+    records.map((record) => record.key),
+  );
+  const [openElements, setOpenElements] = useState<string[]>(() => [
+    records.find((record) =>
+      record.rule.declarations.some((d) => !d.property.startsWith("--")),
+    )?.elements[0] ?? "",
+  ]);
+  const [adding, setAdding] = useState<{
+    ruleKey?: string;
+    selector: string;
+  } | null>(null);
+  const [property, setProperty] = useState("background-color");
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
-  const id = useId();
-  const rule =
-    analysis.rules.find((r) => r.id === selectedRule) ??
-    analysis.rules.find((r) => r.selector === ":root") ??
-    analysis.rules[0];
-  const variables = [...new Set(analysis.variables.map((d) => d.property))];
-  const allScopes = selectedRule === "all-variables" && section === "variables";
-  const declarations = allScopes
-    ? analysis.variables
-    : (rule?.declarations.filter((d) =>
-        section === "variables"
-          ? d.property.startsWith("--")
-          : guidedProperties.some((p) => p.property === d.property),
-      ) ?? []);
-  const filtered = declarations.filter((d) =>
-    `${d.property} ${d.value} ${d.comment}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
   const disabled = !!analysis.diagnostic;
-  const preferSelectorStyles =
-    !!rule &&
-    rule.declarations.some((d) =>
-      guidedProperties.some((p) => p.property === d.property),
-    ) &&
-    !rule.declarations.some((d) => d.property.startsWith("--"));
-  useEffect(() => {
-    if (preferSelectorStyles) setSection("selectors");
-  }, [selectedRule, preferSelectorStyles]);
+  const search = searches[section as keyof typeof searches];
+  const location = locations[section as keyof typeof locations];
   useEffect(() => {
     if (!inspection) return;
-    setSection("selectors");
-    setSearch("");
-    if (inspection.create) {
-      setName(inspection.selector);
-      setError("");
-      setAdding("selector");
-    }
-    onInspectionHandled();
-  }, [inspection, onInspectionHandled]);
-  function start(kind: typeof adding) {
-    setAdding(kind);
-    setName(
-      kind === "property" ? "color" : kind === "selector" ? ":root" : "--",
+    setSection("elements");
+    const isElement =
+      previewElements.some((item) => item.selector === inspection.selector) ||
+      records.some((record) => record.elements.includes(inspection.selector));
+    setElement(`${isElement ? "element" : "selector"}:${inspection.selector}`);
+    setSearches((current) => ({ ...current, elements: "" }));
+    setLocations((current) => ({ ...current, elements: "all" }));
+    setOpenRules(
+      (isElement
+        ? rulesForElement(records, inspection.selector)
+        : records.filter(
+            (record) =>
+              record.rule.selector === inspection.selector ||
+              record.selector === inspection.selector,
+          )
+      ).map((record) => record.key),
     );
-    setValue(kind === "property" ? "var(--text-normal)" : "");
-    setError("");
+    onInspectionHandled();
+  }, [inspection, onInspectionHandled, records]);
+  function matches(decl: ThemeDeclaration) {
+    return `${decl.property} ${decl.value} ${decl.comment}`
+      .toLowerCase()
+      .includes(search.toLowerCase());
   }
-  function add() {
+  function eligible(ruleId: string) {
+    const rule = analysis.rules.find((r) => r.id === ruleId)!;
+    return location === "all" || ruleLocation(rule) === location;
+  }
+  const settings = settingsDeclarations(analysis);
+  const duplicates = new Map<string, number>();
+  for (const decl of section === "settings"
+    ? settings
+    : analysis.rules.flatMap((rule) =>
+        rule.declarations.filter((d) => !d.property.startsWith("--")),
+      ))
+    duplicates.set(decl.property, (duplicates.get(decl.property) ?? 0) + 1);
+  function fields(declarations: ThemeDeclaration[], deletable = false) {
+    return (
+      <FieldGroup className="gap-5">
+        {declarations.map((decl) => (
+          <DeclarationField
+            key={declarationKey(decl, analysis)}
+            decl={decl}
+            analysis={analysis}
+            original={original}
+            showCode={showCode}
+            duplicate={(duplicates.get(decl.property) ?? 0) > 1}
+            disabled={disabled}
+            deletable={deletable}
+            onEdit={onEdit}
+            onJump={onJump}
+          />
+        ))}
+      </FieldGroup>
+    );
+  }
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      declarations: group.declarations.filter(
+        (decl) => eligible(decl.ruleId) && matches(decl),
+      ),
+    }))
+    .filter((group) => group.declarations.length);
+  const hasHeadings = groups.some((group) => group.title);
+  const styleRecords = records.filter((record) =>
+    record.rule.declarations.some((decl) => !decl.property.startsWith("--")),
+  );
+  const selectedSelector =
+    element === "all" ? "" : element.slice(element.indexOf(":") + 1);
+  const selectedRecords =
+    element === "all"
+      ? styleRecords
+      : element.startsWith("selector:")
+        ? styleRecords.filter(
+            (record) =>
+              record.rule.selector === selectedSelector ||
+              record.selector === selectedSelector,
+          )
+        : rulesForElement(styleRecords, selectedSelector);
+  const visibleRecords = selectedRecords
+    .filter((record) => eligible(record.rule.id))
+    .map((record) => ({
+      ...record,
+      visible: record.rule.declarations.filter(
+        (decl) => !decl.property.startsWith("--") && matches(decl),
+      ),
+    }))
+    .filter((record) => record.visible.length);
+  const allLocationRules = analysis.rules.filter((rule) =>
+    section === "settings"
+      ? rule.declarations.some((decl) => settings.includes(decl))
+      : rule.declarations.some((decl) => !decl.property.startsWith("--")),
+  );
+  const locationOptions = [...new Set(allLocationRules.map(ruleLocation))];
+  const currentRule = adding?.ruleKey
+    ? analysis.rules.find((rule) => ruleKey(rule, analysis) === adding.ruleKey)
+    : undefined;
+  const properties = guidedProperties.filter(
+    (p) =>
+      !currentRule?.declarations.some((decl) => decl.property === p.property),
+  );
+  function startProperty(record?: StyleRule) {
+    const selector = record?.rule.selector ?? selectedSelector;
+    if (!selector) return;
+    const existing =
+      record?.rule ??
+      analysis.rules.find(
+        (rule) =>
+          !rule.parentRuleId &&
+          !rule.context.length &&
+          rule.selector === selector,
+      );
+    const first = guidedProperties.find(
+      (p) =>
+        !existing?.declarations.some((decl) => decl.property === p.property),
+    );
+    if (!first) return;
+    setProperty(first.property);
+    setValue("");
+    setError("");
+    setAdding({
+      selector,
+      ruleKey: existing ? ruleKey(existing, analysis) : undefined,
+    });
+  }
+  function saveProperty() {
+    if (!adding) return;
     try {
-      if (adding === "selector") {
-        const next = addRule(analysis.source, name);
-        onEdit(next);
-        onSelectRule(`rule-${next.lastIndexOf(name.trim() + " {")}`);
-      } else if (rule)
-        onEdit(addDeclaration(analysis.source, analysis, rule.id, name, value));
+      let source = analysis.source,
+        parsed = analysis,
+        rule = currentRule;
+      if (adding.ruleKey && !rule)
+        throw new Error(
+          "This rule changed. Close this dialog and select it again.",
+        );
+      if (!rule) {
+        source = addRule(source, adding.selector);
+        parsed = analyzeTheme(source);
+        rule = parsed.rules.at(-1)!;
+      }
+      const next = addDeclaration(source, parsed, rule.id, property, value);
+      onEdit(next);
+      onSelectRule(rule.id);
+      const nextRecords = styleRules(analyzeTheme(next));
+      setOpenRules((current) => [
+        ...new Set([
+          ...current,
+          ...nextRecords
+            .filter((r) => r.rule.selector === adding.selector)
+            .map((r) => r.key),
+        ]),
+      ]);
       setAdding(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not add this setting.");
+      setError(e instanceof Error ? e.message : "Could not add this style.");
     }
   }
-  function originalValue(decl: ThemeDeclaration) {
-    const rule = analysis.rules.find((r) => r.id === decl.ruleId)!;
-    const occurrences = analysis.rules.filter(
-      (r) =>
-        r.selector === rule?.selector &&
-        r.context.join("\n") === rule.context.join("\n"),
+  const choices = (() => {
+    const used = new Map<string, { label: string; value: string }>();
+    for (const record of records) {
+      for (const target of record.elements)
+        used.set(`element:${target}`, {
+          value: `element:${target}`,
+          label: elementName(target),
+        });
+      if (!record.elements.includes(record.selector))
+        used.set(`selector:${record.selector}`, {
+          value: `selector:${record.selector}`,
+          label: record.selector,
+        });
+    }
+    const result = [
+      {
+        label: "Overview",
+        options: [{ label: "All existing styles", value: "all" }],
+      },
+      { label: "In this theme", options: [...used.values()] },
+    ];
+    const known = new Set(used.keys());
+    for (const category of [
+      ...new Set(previewElements.map((item) => item.category)),
+    ]) {
+      const options = previewElements
+        .filter(
+          (item) =>
+            item.category === category &&
+            !known.has(`element:${item.selector}`),
+        )
+        .map((item) => ({
+          label: item.label,
+          value: `element:${item.selector}`,
+        }));
+      if (options.length)
+        result.push({ label: `More elements · ${category}`, options });
+    }
+    if (
+      element !== "all" &&
+      !result.some((group) =>
+        group.options.some((option) => option.value === element),
+      )
+    )
+      result.splice(1, 0, {
+        label: "Selected element",
+        options: [{ label: elementName(selectedSelector), value: element }],
+      });
+    return result.filter((group) => group.options.length);
+  })();
+  function renderRule(record: (typeof visibleRecords)[number], index: number) {
+    return (
+      <AccordionItem key={record.key} value={record.key}>
+        <AccordionTrigger
+          className={cn(
+            "items-center gap-2 py-3",
+            element === "all" && "focus-visible:ring-inset",
+            element === "all" && index === 0 && "pt-1",
+          )}
+        >
+          <span className="flex min-w-0 flex-col gap-1">
+            <span data-slot="accordion-title" className="text-xs wrap-anywhere">
+              {record.label}
+            </span>
+            <span className="font-mono text-[10px] font-normal wrap-anywhere text-subtle-foreground">
+              {ruleLocation(record.rule)} · L{record.rule.line}
+            </span>
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="flex flex-col gap-4 pb-5">
+          {record.shared && (
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              Shared rule: changes affect all selectors listed above.
+            </p>
+          )}
+          {fields(record.visible, true)}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Button
+              size="xs"
+              variant="ghost"
+              disabled={
+                disabled ||
+                !guidedProperties.some(
+                  (p) =>
+                    !record.rule.declarations.some(
+                      (d) => d.property === p.property,
+                    ),
+                )
+              }
+              onClick={() => startProperty(record)}
+            >
+              <PlusIcon data-icon="inline-start" />
+              Add property
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => onJump(record.rule.from)}
+            >
+              <ArrowUpRightIcon data-icon="inline-start" />
+              View in CSS
+            </Button>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
     );
-    const index = occurrences.findIndex((r) => r.id === rule?.id);
-    const originalRule = original.rules.filter(
-      (r) =>
-        r.selector === rule?.selector &&
-        r.context.join("\n") === rule.context.join("\n"),
-    )[index];
-    const duplicate = rule!.declarations
-      .filter((d) => d.property === decl.property)
-      .indexOf(decl);
-    return originalRule?.declarations.filter(
-      (d) => d.property === decl.property,
-    )[duplicate]?.value;
   }
+  const elementGroups = [
+    ...new Set(visibleRecords.map((record) => record.elements[0])),
+  ];
   return (
-    <div className="flex flex-col gap-4 px-[26px] pt-6 pb-[30px] max-[1050px]:px-5 max-[1050px]:py-[22px] max-[760px]:px-[22px] min-[1600px]:px-8 min-[1600px]:py-[30px]">
+    <div className="flex min-w-0 flex-col gap-4 px-[26px] pt-6 pb-[30px] max-[1050px]:px-5 max-[1050px]:py-[22px] max-[760px]:px-[22px] min-[1600px]:px-8 min-[1600px]:py-[30px]">
       {disabled && (
         <Alert variant="destructive">
           <AlertTitle>CSS needs a quick fix</AlertTitle>
           <AlertDescription>
             {analysis.diagnostic!.message} on line {analysis.diagnostic!.line}.
-            Your text is safe in the CSS editor.
+            Your source remains available in the CSS editor.
           </AlertDescription>
-          <Button variant="outline" size="sm" onClick={() => onJump(0)}>
+          <Button size="sm" variant="outline" onClick={() => onJump(0)}>
             Open CSS editor
           </Button>
         </Alert>
@@ -192,227 +433,281 @@ export function VisualEditor({
         className="w-full"
         aria-label="Visual settings category"
       >
-        <ToggleGroupItem value="variables" className="flex-1">
-          Variables{" "}
-          <Badge variant="secondary">{analysis.variables.length}</Badge>
+        <ToggleGroupItem value="settings" className="flex-1">
+          Theme settings
         </ToggleGroupItem>
-        <ToggleGroupItem value="selectors" className="flex-1">
-          Selector styles
+        <ToggleGroupItem value="elements" className="flex-1">
+          Element styles
         </ToggleGroupItem>
       </ToggleGroup>
-      <FieldGroup>
+      {section === "elements" && (
         <Field>
-          <div className="mb-[5px] flex items-center justify-between gap-2.5">
-            <FieldLabel>Editing scope</FieldLabel>
+          <FieldLabel htmlFor={`${id}-element`}>Element</FieldLabel>
+          <div className="flex items-center gap-2">
+            <ChoiceSelect
+              id={`${id}-element`}
+              label="Element"
+              value={element}
+              groups={choices}
+              onChange={(next) => {
+                setElement(next);
+                setOpenRules(records.map((record) => record.key));
+                setSearches((current) => ({ ...current, elements: "" }));
+                setLocations((current) => ({ ...current, elements: "all" }));
+              }}
+            />
             <Button
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Add selector"
-              onClick={() => start("selector")}
-              disabled={disabled}
+              variant="outline"
+              size="icon-sm"
+              aria-label="Pick an element in the preview"
+              onClick={onInspect}
+              disabled={!onInspect}
             >
-              <PlusIcon />
+              <CrosshairIcon />
             </Button>
           </div>
-          <ChoiceSelect
-            label="Editing scope"
-            value={allScopes ? "all-variables" : (rule?.id ?? "none")}
-            options={
-              analysis.rules.length
-                ? [
-                    ...(section === "variables"
-                      ? [{ label: "All scopes", value: "all-variables" }]
-                      : []),
-                    ...analysis.rules.map((r) => ({
-                      label: `${r.selector} · L${r.line}`,
-                      value: r.id,
-                    })),
-                  ]
-                : [{ label: "No selectors yet", value: "none" }]
-            }
-            onChange={onSelectRule}
-            disabled={disabled || !analysis.rules.length}
-          />
-          {allScopes ? (
-            <p className="text-[10px] leading-[1.6] wrap-anywhere text-subtle-foreground">
-              Variables from every rule. Each edit keeps its original scope.
-            </p>
-          ) : rule?.context.length ? (
-            <p className="text-[10px] leading-[1.6] wrap-anywhere text-subtle-foreground">
-              Inside {rule.context.join(" → ")}
-            </p>
-          ) : (
-            <p className="text-[10px] leading-[1.6] wrap-anywhere text-subtle-foreground">
-              Only declarations in this rule will change.
-            </p>
-          )}
         </Field>
-      </FieldGroup>
-      <Separator />
-      <div className="-mt-1.5 -mb-[9px] flex items-center justify-between gap-2">
-        <span className="text-[9px] font-[550] tracking-[1.3px] text-subtle-foreground uppercase">
-          {section === "variables" ? "CSS variables" : "Selected properties"}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!rule || disabled}
-          onClick={() =>
-            start(section === "variables" ? "variable" : "property")
-          }
-        >
-          <PlusIcon data-icon="inline-start" />
-          Add {section === "variables" ? "variable" : "property"}
-        </Button>
-      </div>
-      {declarations.length > 10 && (
-        <div className="flex items-center gap-2">
-          <SearchIcon className="size-3.5 shrink-0 text-subtle-foreground" />
-          <Input
-            aria-label="Search settings"
-            placeholder="Find a setting…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
       )}
-      <FieldGroup>
-        {filtered.map((decl) => {
-          const reset = originalValue(decl);
-          const scope = analysis.rules.find((r) => r.id === decl.ruleId);
-          const location = scope
-            ? [...scope.context, scope.selector].join(" · ")
-            : "";
-          return (
-            <div className="min-w-0" key={decl.id}>
-              <div className="mb-[5px] flex items-start justify-between gap-2.5">
-                <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="min-w-0 text-[12px] font-medium wrap-anywhere">
-                    {guidedProperties.find((p) => p.property === decl.property)
-                      ?.label ?? friendlyName(decl.property)}
-                  </span>
-                  <span
-                    className="max-w-full min-w-0 font-mono text-[10px] wrap-anywhere text-subtle-foreground"
-                    title={
-                      location
-                        ? `${location} · ${decl.property}`
-                        : decl.property
-                    }
-                  >
-                    {scope && <span>{scope.selector} · </span>}
-                    <code className="font-mono">{decl.property}</code>
-                  </span>
-                  {decl.important && (
-                    <Badge variant="outline">!important</Badge>
-                  )}
-                </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  {reset !== undefined && reset !== decl.value && (
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      aria-label={`Reset ${decl.property}`}
-                      disabled={disabled}
-                      onClick={() =>
-                        onEdit(
-                          editDeclaration(
-                            analysis.source,
-                            analysis,
-                            decl,
-                            reset,
-                          ),
-                        )
-                      }
-                    >
-                      <RotateCcwIcon />
-                    </Button>
-                  )}
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    aria-label={`View source for ${decl.property}`}
-                    onClick={() => onJump(decl.from)}
-                  >
-                    <ArrowUpRightIcon />
-                  </Button>
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    aria-label={`Remove ${decl.property}`}
-                    disabled={disabled}
-                    onClick={() =>
-                      onEdit(removeDeclaration(analysis.source, analysis, decl))
-                    }
-                  >
-                    <Trash2Icon />
-                  </Button>
-                </div>
-              </div>
-              <ValueEditor
-                label={decl.property}
-                value={decl.value}
-                variables={variables.filter((v) => v !== decl.property)}
-                allowBinding={section === "selectors"}
-                disabled={disabled}
-                onCommit={(next) =>
-                  onEdit(
-                    editDeclaration(analysis.source, analysis, decl, next),
-                    decl.id,
-                  )
+      <div className="flex items-center gap-2">
+        <SearchIcon className="size-3.5 shrink-0 text-subtle-foreground" />
+        <Input
+          aria-label="Search settings"
+          placeholder={
+            section === "settings"
+              ? "Search settings or comments…"
+              : "Search properties or values…"
+          }
+          value={search}
+          onChange={(event) =>
+            setSearches((current) => ({
+              ...current,
+              [section]: event.target.value,
+            }))
+          }
+        />
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Editor display options"
+              />
+            }
+          >
+            <EllipsisIcon />
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="max-w-[calc(100vw-24px)] gap-4 p-4"
+          >
+            <PopoverTitle>Display options</PopoverTitle>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={showCode}
+                onChange={(event) => setShowCode(event.target.checked)}
+                className="accent-ring"
+              />
+              Show CSS names and locations
+            </label>
+            <Field>
+              <FieldLabel htmlFor={`${id}-filter`}>
+                Filter by CSS location
+              </FieldLabel>
+              <ChoiceSelect
+                id={`${id}-filter`}
+                label="Filter by CSS location"
+                value={location}
+                options={[
+                  { label: "All locations", value: "all" },
+                  ...locationOptions.map((value) => ({ label: value, value })),
+                ]}
+                onChange={(value) =>
+                  setLocations((current) => ({ ...current, [section]: value }))
                 }
               />
-              {decl.comment && (
-                <p className="mt-[5px] text-[10px] leading-[1.65] whitespace-pre-line text-muted-foreground">
-                  {decl.comment
-                    .split("\n")
-                    .map((line) => `// ${line}`)
-                    .join("\n")}
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </FieldGroup>
-      {!filtered.length && (
+            </Field>
+          </PopoverContent>
+        </Popover>
+      </div>
+      {location !== "all" && (
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className="min-w-0 wrap-anywhere whitespace-normal"
+          >
+            {location}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Clear location filter"
+            onClick={() =>
+              setLocations((current) => ({ ...current, [section]: "all" }))
+            }
+          >
+            <XIcon />
+          </Button>
+        </div>
+      )}
+      {section === "settings" ? (
+        hasHeadings ? (
+          <Accordion
+            multiple
+            value={
+              search ? visibleGroups.map((group) => group.key) : openSettings
+            }
+            onValueChange={(value) => setOpenSettings(value as string[])}
+          >
+            {visibleGroups.map((group) => (
+              <AccordionItem key={group.key} value={group.key}>
+                <AccordionTrigger className="items-center gap-2 py-3">
+                  <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span
+                      data-slot="accordion-title"
+                      className="text-xs wrap-anywhere"
+                    >
+                      {group.title || "Other settings"}
+                    </span>
+                    <span className="text-[10px] font-normal text-subtle-foreground">
+                      {group.declarations.length}
+                    </span>
+                    {groups.filter((g) => g.title === group.title).length >
+                      1 && (
+                      <span className="max-w-full font-mono text-[10px] font-normal wrap-anywhere text-subtle-foreground">
+                        {group.location}
+                      </span>
+                    )}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="flex flex-col gap-4 pb-5">
+                  {group.note && (
+                    <p className="text-[10px] leading-relaxed whitespace-pre-line text-muted-foreground">
+                      {group.note
+                        .split("\n")
+                        .map((line) => `// ${line}`)
+                        .join("\n")}
+                    </p>
+                  )}
+                  {fields(group.declarations)}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        ) : (
+          <>
+            {visibleGroups.map((group) => (
+              <div key={group.key}>{fields(group.declarations)}</div>
+            ))}
+          </>
+        )
+      ) : (
+        <>
+          {element === "all" ? (
+            <Accordion
+              multiple
+              value={search ? elementGroups : openElements}
+              onValueChange={(value) => setOpenElements(value as string[])}
+            >
+              {elementGroups.map((target) => (
+                <AccordionItem key={target} value={target}>
+                  <AccordionTrigger className="items-center gap-2 py-3">
+                    <span
+                      data-slot="accordion-title"
+                      className="text-xs wrap-anywhere"
+                    >
+                      {elementName(target)}
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-0 pt-0">
+                    <Accordion
+                      multiple
+                      value={
+                        search
+                          ? visibleRecords.map((record) => record.key)
+                          : openRules
+                      }
+                      onValueChange={(value) => setOpenRules(value as string[])}
+                    >
+                      {visibleRecords
+                        .filter((record) => record.elements[0] === target)
+                        .map(renderRule)}
+                    </Accordion>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+            <>
+              <Accordion
+                multiple
+                value={
+                  search
+                    ? visibleRecords.map((record) => record.key)
+                    : openRules
+                }
+                onValueChange={(value) => setOpenRules(value as string[])}
+              >
+                {visibleRecords.map(renderRule)}
+              </Accordion>
+              {!search &&
+                location === "all" &&
+                !analysis.rules.some(
+                  (rule) =>
+                    !rule.parentRuleId &&
+                    !rule.context.length &&
+                    rule.selector === selectedSelector,
+                ) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={disabled}
+                    onClick={() => startProperty()}
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    {selectedRecords.length
+                      ? "Add base style"
+                      : "Add a style for this element"}
+                  </Button>
+                )}
+            </>
+          )}
+        </>
+      )}
+      {(section === "settings"
+        ? !visibleGroups.length
+        : !visibleRecords.length) && (
         <Empty>
           <EmptyHeader>
             <EmptyTitle>
-              {search
+              {search || location !== "all"
                 ? "No matching settings"
-                : section === "variables"
-                  ? "A blank canvas"
-                  : "Style this selector"}
+                : section === "settings"
+                  ? "No theme settings found"
+                  : element === "all"
+                    ? "No element styles yet"
+                    : "No local styles for this element"}
             </EmptyTitle>
             <EmptyDescription>
-              {search
-                ? "Try a different name or value."
-                : section === "variables"
-                  ? "Add a variable here, or choose a different scope."
-                  : "Add color, radius, spacing, typography, or opacity. Other properties stay available in CSS."}
+              {search || location !== "all"
+                ? "Try another search or clear the location filter."
+                : section === "settings"
+                  ? "This file does not declare editable theme settings. You can edit its CSS or style an element."
+                  : element === "all"
+                    ? "Pick an element in the preview or choose one from the Element list."
+                    : "Choose a property and value to add a style. Selecting an element does not change your CSS."}
             </EmptyDescription>
           </EmptyHeader>
-          {!search && (
+          {section === "elements" && element === "all" && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                start(
-                  rule
-                    ? section === "variables"
-                      ? "variable"
-                      : "property"
-                    : "selector",
-                )
-              }
-              disabled={disabled}
+              onClick={onInspect}
+              disabled={!onInspect}
             >
-              <PlusIcon data-icon="inline-start" />
-              Add{" "}
-              {rule
-                ? section === "variables"
-                  ? "variable"
-                  : "property"
-                : "selector"}
+              <CrosshairIcon data-icon="inline-start" />
+              Pick an element in the preview
             </Button>
           )}
         </Empty>
@@ -425,92 +720,54 @@ export function VisualEditor({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add {adding}</DialogTitle>
-            <DialogDescription>
-              {adding === "selector"
-                ? "Create a new rule. Existing rules stay unchanged."
-                : `Add a declaration to ${rule?.selector ?? "your stylesheet"}.`}
-            </DialogDescription>
+            <DialogTitle>Add property</DialogTitle>
+            <DialogDescription>{adding?.selector}</DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              add();
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveProperty();
             }}
             className="flex flex-col gap-5"
           >
             <FieldGroup>
-              {adding === "property" ? (
-                <Field>
-                  <FieldLabel>Property</FieldLabel>
-                  <ChoiceSelect
-                    label="New property"
-                    value={name}
-                    options={guidedProperties.map((p) => ({
-                      label: p.label,
-                      value: p.property,
-                    }))}
-                    onChange={setName}
-                  />
-                </Field>
-              ) : (
-                <Field>
-                  <FieldLabel htmlFor={`${id}-name`}>
-                    {adding === "selector" ? "CSS selector" : "Variable name"}
-                  </FieldLabel>
-                  {adding === "selector" && (
-                    <ChoiceSelect
-                      label="Common selector"
-                      value={
-                        selectorPresets.find((p) => p.selector === name)
-                          ?.selector ?? "custom"
-                      }
-                      groups={[
-                        ...selectorPresetGroups.map((group) => ({
-                          label: group.label,
-                          options: group.targets.map(([selector, label]) => ({
-                            label,
-                            value: selector,
-                          })),
+              <Field>
+                <FieldLabel htmlFor={`${id}-property`}>Property</FieldLabel>
+                <ChoiceSelect
+                  id={`${id}-property`}
+                  label="Property"
+                  value={property}
+                  groups={[...new Set(guidedProperties.map((p) => p.group))]
+                    .map((group) => ({
+                      label: group,
+                      options: properties
+                        .filter((p) => p.group === group)
+                        .map((p) => ({
+                          label: p.label,
+                          value: p.property,
                         })),
-                        {
-                          label: "Custom",
-                          options: [
-                            { label: "Custom selector", value: "custom" },
-                          ],
-                        },
-                      ]}
-                      onChange={(next) =>
-                        setName(next === "custom" ? "" : next)
-                      }
-                    />
-                  )}
-                  <Input
-                    id={`${id}-name`}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    spellCheck={false}
-                    placeholder={
-                      adding === "selector" ? ".my-selector" : "--my-color"
-                    }
-                    autoFocus
-                  />
-                </Field>
-              )}
-              {adding !== "selector" && (
-                <Field>
-                  <FieldLabel htmlFor={`${id}-value`}>CSS value</FieldLabel>
-                  <Input
-                    id={`${id}-value`}
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    placeholder="#a7b7ff, 12px, or var(--accent)"
-                    spellCheck={false}
-                  />
-                </Field>
-              )}
-              {error && <FieldError>{error}</FieldError>}
+                    }))
+                    .filter((group) => group.options.length)}
+                  onChange={(next) => {
+                    setProperty(next);
+                    setValue("");
+                    setError("");
+                  }}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Value</FieldLabel>
+                <ValueEditor
+                  label={`${property} new`}
+                  colorProperty={isColorProperty(property)}
+                  placeholder={`e.g. ${guidedProperties.find((p) => p.property === property)?.example ?? ""}`}
+                  value={value}
+                  onCommit={setValue}
+                  onDraftChange={setValue}
+                />
+              </Field>
             </FieldGroup>
+            {error && <FieldError>{error}</FieldError>}
             <DialogFooter>
               <Button
                 type="button"
@@ -519,7 +776,9 @@ export function VisualEditor({
               >
                 Cancel
               </Button>
-              <Button type="submit">Add {adding}</Button>
+              <Button type="submit" disabled={disabled || !value.trim()}>
+                Add style
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

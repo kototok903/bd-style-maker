@@ -21,6 +21,7 @@ import {
 import type { InspectorSelection } from "@/features/preview/lib/inspector-types";
 import { readInspectorSelection } from "@/features/preview/lib/inspector-types";
 import type { ThemeAnalysis } from "@/features/theme/theme-types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   analysis: ThemeAnalysis;
@@ -223,7 +224,11 @@ export function ThemePreview({
     loaded = compiled.resources.filter((r) => r.status === "loaded").length;
   return (
     <section
-      className="relative flex h-full min-h-0 flex-col overflow-hidden"
+      className={cn(
+        "relative flex h-full min-h-0 flex-col overflow-hidden",
+        inspect &&
+          "after:pointer-events-none after:absolute after:inset-0 after:border-[0.5px] after:border-ring",
+      )}
       aria-label="Live theme preview"
       aria-busy={!ready || loading}
       data-matched-selectors={matched ?? undefined}

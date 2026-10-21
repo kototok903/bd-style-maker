@@ -2,12 +2,12 @@
 
 Reviewed the four theme files in the local Vencord themes folder:
 
-| Theme            | Patterns                                                                                | Interpretation                                                                                                                                                          |
-| ---------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Material Discord | Headings above contiguous declaration groups; occasional inline exceptions              | All three app font fields inherit `APP FONT SETTINGS`. The following accent heading belongs to the accent fields. Inline exceptions appear after their field's heading. |
-| system24         | Short section headings, per-field inline descriptions, consecutive explanatory comments | Fields show their shared heading followed by any inline descriptions. Following fields inherit only the shared heading, until the group ends.                           |
-| Tokyo Night      | Rule-opening labels, blank lines, headings above color groups                           | Blank lines prevent a broad `Dark Mode` label from leaking into individual groups; each color group's heading applies to its fields.                                    |
-| NieR Light       | Metadata, ASCII art, import notes and a heading outside `:root`                         | Comments outside a rule do not become descriptions of declarations inside it.                                                                                           |
+| Theme            | Patterns                                                                                | Interpretation                                                                                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Material Discord | Headings above contiguous declaration groups; occasional inline exceptions              | All three app font fields belong to `APP FONT SETTINGS`. The following accent heading belongs to the accent fields. Inline exceptions appear after their field's heading. |
+| system24         | Short section headings, per-field inline descriptions, consecutive explanatory comments | Sections show their shared heading, with inline descriptions attached to individual fields. Following fields inherit only the shared heading, until the group ends.       |
+| Tokyo Night      | Rule-opening labels, blank lines, headings above color groups                           | Blank lines prevent a broad `Dark Mode` label from leaking into individual groups; each color group's heading applies to its fields.                                      |
+| NieR Light       | Metadata, ASCII art, import notes and a heading outside `:root`                         | Comments outside a rule do not become descriptions of declarations inside it.                                                                                             |
 
 Association is based on PostCSS nodes and source lines, never nearest-text matching:
 
@@ -18,4 +18,6 @@ Association is based on PostCSS nodes and source lines, never nearest-text match
 5. A later group's heading never describes the preceding declaration. A previous field's inline comment never becomes the next field's heading.
 6. Commented-out custom declarations/imports and separator-only comments are not shown as descriptions. Rule-level metadata and import annotations stay outside field descriptions.
 
-These rules only affect displayed descriptions and search. Source comments, whitespace, line endings and export bytes remain intact. Repeated group descriptions remain visible when a search hides the other members of that group.
+The visual editor recognizes a short first standalone comment (at most 90 characters / 12 words, without sentence punctuation) as a section heading. Adjacent explanatory comments appear once beneath that heading; inline notes stay on their own fields. Other standalone prose stays a field note. Without recognized headings, the editor shows a plain list; partially grouped themes use “Other settings” for the remaining fields. This is a conservative presentation heuristic, not a theme metadata schema. It never infers switches or value alternatives.
+
+These rules only affect grouping, displayed descriptions and search. Source comments, whitespace, line endings and export bytes remain intact. Search retains the matching field's group heading and notes.

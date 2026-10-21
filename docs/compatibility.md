@@ -20,9 +20,11 @@ Source-reading bounds: 15 seconds per stylesheet request, 3 MB per response, 8 M
 
 ## Guided editor
 
-All scopes is the default variables view, including `body` settings and `:root` colors. Individual scopes remain selectable. Edits patch the specific original declaration; duplicate names, conditional scopes, and dark/light settings remain distinct. Unknown properties stay editable in the CSS editor.
+Theme settings shows local variables and global typography settings. Short standalone CSS comment headings become expandable groups; explanatory and inline comments remain notes. Without headings, settings remain a plain list. The options popover beside search contains the location filter and technical-label preference. Duplicate variable names always show their actual selectors and at-rule conditions, with source lines for repeated definitions at the same location. No control type is inferred from author comment prose.
 
-Literal colors, including `oklch()`, have a color picker. Merely opening the picker does not normalize the source. Changing the picker emits a hex color and preserves alpha; CSS expressions and variable references remain text/binding controls.
+Element styles offers existing CSS selectors and named preview targets. Base, hover, ancestor, nested, conditional and repeated source rules remain distinct, with literal selectors, conditions and source lines visible. Positive selector subjects determine grouping: a descendant is not treated as styling its ancestor, and negation/`:has()` arguments are not treated as positive targets. Unrecognized selectors remain available verbatim. Shared selector lists retain one source rule and identify that edits affect the whole list. Selecting an unused target does not write an empty rule; confirming a property creates the rule and declaration together. The CSS editor handles custom variables, structural edits and arbitrary selectors.
+
+Edits patch the original declaration. Element-style properties can be deleted; removing the last declaration also removes a newly added rule when it contains no comments or nested content. Original rules are retained, and variables have no delete action in Theme settings. View in CSS and restore-original actions preserve the source workflow. Literal colors, including `oklch()`, have a swatch popover using the shadcn.io picker adapted to the project's Base UI primitives, with opacity controls. Opening the picker or switching its output format leaves source unchanged. Alpha-only edits retain the original functional color notation; other color changes emit hex with alpha. CSS expressions and variable references remain text fields.
 
 ## Isolation
 

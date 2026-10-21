@@ -83,6 +83,42 @@ describe("source-preserving edits", () => {
       "already",
     );
   });
+  it.each(["\n", "\r\n"])(
+    "does not introduce blank lines when adding GUI properties with %j line endings",
+    (eol) => {
+      const original = `:root {--accent:red}${eol}`;
+      let source = addRule(original, "#app-mount");
+      let analysis = analyzeTheme(source);
+      source = addDeclaration(
+        source,
+        analysis,
+        analysis.rules.at(-1)!.id,
+        "background-color",
+        "#e1dbb8",
+      );
+      analysis = analyzeTheme(source);
+      source = addDeclaration(
+        source,
+        analysis,
+        analysis.rules.at(-1)!.id,
+        "opacity",
+        ".7",
+      );
+      expect(source).toBe(
+        original +
+          `${eol}#app-mount {${eol}  background-color: #e1dbb8;${eol}  opacity: .7;${eol}}${eol}`,
+      );
+    },
+  );
+  it("inserts before an indented closing line while preserving existing whitespace and comments", () => {
+    const source =
+      ".outer {\n  .inner {\n    /* keep */\n    color:red\n  }\n}";
+    const a = analyzeTheme(source);
+    const next = addDeclaration(source, a, a.rules[1].id, "opacity", ".5");
+    expect(next).toBe(
+      source.replace("color:red\n  }", "color:red;\n    opacity: .5;\n  }"),
+    );
+  });
   it("preserves invalid text and reports a diagnostic", () => {
     const source = ":root { --a: red;";
     const a = analyzeTheme(source);

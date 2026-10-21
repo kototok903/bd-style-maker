@@ -1,7 +1,7 @@
 import postcss, { CssSyntaxError } from "postcss";
 import valueParser from "postcss-value-parser";
 
-import { declarationComments } from "@/features/theme/lib/declaration-comments";
+import { declarationDocumentation } from "@/features/theme/lib/declaration-comments";
 import type {
   ThemeAnalysis,
   ThemeDeclaration,
@@ -15,14 +15,185 @@ export const metadataFields = [
   "version",
 ] as const;
 export const guidedProperties = [
-  { property: "color", label: "Text color" },
-  { property: "background-color", label: "Background color" },
-  { property: "border-color", label: "Border color" },
-  { property: "border-radius", label: "Corner radius" },
-  { property: "font-size", label: "Font size" },
-  { property: "padding", label: "Padding" },
-  { property: "gap", label: "Gap" },
-  { property: "opacity", label: "Opacity" },
+  { property: "color", label: "Text color", example: "#e8e9f0", group: "Text" },
+  {
+    property: "font-family",
+    label: "Font family",
+    example: '"Inter", sans-serif',
+    group: "Text",
+  },
+  { property: "font-size", label: "Font size", example: "16px", group: "Text" },
+  {
+    property: "font-weight",
+    label: "Font weight",
+    example: "500",
+    group: "Text",
+  },
+  {
+    property: "font-style",
+    label: "Font style",
+    example: "italic",
+    group: "Text",
+  },
+  {
+    property: "line-height",
+    label: "Line height",
+    example: "1.5",
+    group: "Text",
+  },
+  {
+    property: "letter-spacing",
+    label: "Letter spacing",
+    example: "0.05em",
+    group: "Text",
+  },
+  {
+    property: "text-align",
+    label: "Text alignment",
+    example: "center",
+    group: "Text",
+  },
+  {
+    property: "text-decoration",
+    label: "Text decoration",
+    example: "underline",
+    group: "Text",
+  },
+  {
+    property: "text-transform",
+    label: "Text capitalization",
+    example: "uppercase",
+    group: "Text",
+  },
+  {
+    property: "text-shadow",
+    label: "Text shadow",
+    example: "0 1px 3px rgb(0 0 0 / 30%)",
+    group: "Text",
+  },
+  {
+    property: "background-color",
+    label: "Background color",
+    example: "rgb(36 37 43 / 50%)",
+    group: "Backgrounds",
+  },
+  {
+    property: "background-image",
+    label: "Background image or gradient",
+    example: 'url("https://example.com/background.jpg")',
+    group: "Backgrounds",
+  },
+  {
+    property: "background-size",
+    label: "Background image size",
+    example: "cover",
+    group: "Backgrounds",
+  },
+  {
+    property: "background-position",
+    label: "Background image position",
+    example: "center",
+    group: "Backgrounds",
+  },
+  {
+    property: "background-repeat",
+    label: "Background image repeat",
+    example: "no-repeat",
+    group: "Backgrounds",
+  },
+  {
+    property: "background-attachment",
+    label: "Background scroll behavior",
+    example: "fixed",
+    group: "Backgrounds",
+  },
+  {
+    property: "border-color",
+    label: "Border color",
+    example: "#667085",
+    group: "Borders and shadows",
+  },
+  {
+    property: "border-width",
+    label: "Border width",
+    example: "1px",
+    group: "Borders and shadows",
+  },
+  {
+    property: "border-style",
+    label: "Border style",
+    example: "solid",
+    group: "Borders and shadows",
+  },
+  {
+    property: "border-radius",
+    label: "Corner radius",
+    example: "8px",
+    group: "Borders and shadows",
+  },
+  {
+    property: "box-shadow",
+    label: "Shadow",
+    example: "0 4px 16px rgb(0 0 0 / 20%)",
+    group: "Borders and shadows",
+  },
+  { property: "width", label: "Width", example: "240px", group: "Size" },
+  { property: "height", label: "Height", example: "48px", group: "Size" },
+  {
+    property: "min-width",
+    label: "Minimum width",
+    example: "160px",
+    group: "Size",
+  },
+  {
+    property: "min-height",
+    label: "Minimum height",
+    example: "32px",
+    group: "Size",
+  },
+  {
+    property: "max-width",
+    label: "Maximum width",
+    example: "100%",
+    group: "Size",
+  },
+  {
+    property: "max-height",
+    label: "Maximum height",
+    example: "400px",
+    group: "Size",
+  },
+  {
+    property: "padding",
+    label: "Inner spacing (padding)",
+    example: "8px 12px",
+    group: "Spacing",
+  },
+  {
+    property: "margin",
+    label: "Outer spacing (margin)",
+    example: "8px 0",
+    group: "Spacing",
+  },
+  { property: "gap", label: "Gap", example: "12px", group: "Spacing" },
+  {
+    property: "opacity",
+    label: "Overall opacity",
+    example: "0.5",
+    group: "Effects",
+  },
+  {
+    property: "backdrop-filter",
+    label: "Background blur",
+    example: "blur(8px)",
+    group: "Effects",
+  },
+  {
+    property: "display",
+    label: "Show / hide",
+    example: "none",
+    group: "Visibility",
+  },
 ] as const;
 
 export function readMetadata(text: string): Record<string, string> {
@@ -73,7 +244,26 @@ export function analyzeTheme(source: string): ThemeAnalysis {
         if (parent.type === "rule") rule.context.unshift(parent.selector);
         parent = parent.parent;
       }
-      const comments = declarationComments(node);
+      if (
+        node.parent?.type === "rule" &&
+        node.parent.source?.start?.offset !== undefined
+      )
+        rule.parentRuleId = `rule-${node.parent.source.start.offset + bom}`;
+      // A conditional block can sit between a nested rule and its parent rule.
+      if (!rule.parentRuleId) {
+        let ancestor = node.parent;
+        while (ancestor && ancestor.type !== "root") {
+          if (
+            ancestor.type === "rule" &&
+            ancestor.source?.start?.offset !== undefined
+          ) {
+            rule.parentRuleId = `rule-${ancestor.source.start.offset + bom}`;
+            break;
+          }
+          ancestor = ancestor.parent;
+        }
+      }
+      const comments = declarationDocumentation(node);
       node.each((decl) => {
         if (
           decl.type !== "decl" ||
@@ -102,7 +292,9 @@ export function analyzeTheme(source: string): ThemeAnalysis {
           valueFrom: valueStart + (first?.sourceIndex ?? 0),
           valueTo: valueStart + (last?.sourceEndIndex ?? rawValue.length),
           line: decl.source.start.line,
-          comment: comments.get(decl) ?? "",
+          comment: comments.get(decl)?.comment ?? "",
+          note: comments.get(decl)?.note ?? "",
+          group: comments.get(decl)?.group,
         };
         rule.declarations.push(declaration);
         if (decl.prop.startsWith("--")) result.variables.push(declaration);
@@ -229,10 +421,14 @@ export function addDeclaration(
   const tail = rule.declarations.at(-1);
   const needsSemicolon =
     tail && !text.slice(tail.from, tail.to).trimEnd().endsWith(";");
+  const closingLine = text.lastIndexOf("\n", close - 1) + 1;
+  const closingOnOwnLine =
+    closingLine > rule.from && /^[\t ]*$/.test(text.slice(closingLine, close));
+  const insertion = closingOnOwnLine ? closingLine : close;
   let next =
-    text.slice(0, close) +
-    `${eol}${indent}  ${property}: ${value.trim()};${eol}${indent}` +
-    text.slice(close);
+    text.slice(0, insertion) +
+    `${closingOnOwnLine ? "" : eol}${indent}  ${property}: ${value.trim()};${eol}${closingOnOwnLine ? "" : indent}` +
+    text.slice(insertion);
   if (needsSemicolon) next = next.slice(0, tail.to) + ";" + next.slice(tail.to);
   if (analyzeTheme(next).diagnostic)
     throw new Error(
